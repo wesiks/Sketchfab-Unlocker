@@ -50,7 +50,7 @@ Sketchfab Unlocker is a desktop utility for Windows designed to download and unl
 - `SketchfabUnlocker.exe`: Portable standalone executable built via PyInstaller with `--noconsole` and relative paths to `./tools`.
 
 ### 4. Privacy & Data Protection
-- Scrub any personal local machine paths (`C:\Users\Fasok\...`), Windows usernames, or credentials.
+- Scrub any personal local machine paths, Windows usernames, or credentials.
 - Ensure `downloads/` directory only contains `.gitkeep`.
 - Update `.gitignore` to prevent any personal files, downloaded assets, temporary keys, logs, or pyinstaller build artifacts from entering git.
 

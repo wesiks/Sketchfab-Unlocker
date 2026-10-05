@@ -12,7 +12,7 @@
 
 ## Global Constraints
 - Absolute requirement: NO comments or explanations in any code files (`#` comments or docstrings explaining code).
-- Strict privacy: No personal machine paths (`C:\Users\Fasok\...`), Windows usernames, or credentials committed.
+- Strict privacy: No personal machine paths, Windows usernames, or credentials committed.
 - Clean output enabled by default: remove `key.txt`, `file.osgjs`, `model_file.bin`, `model_file_wireframe.bin`, `textures_manifest.json` after conversion.
 - GitHub target: public repository `wesiks/Sketchfab-Unlocker`.
 
@@ -127,7 +127,7 @@ Ensure `downloads/*` (except `!downloads/.gitkeep`), `build/`, `dist/`, `*.spec`
 Remove all previously downloaded test models so that only `.gitkeep` remains.
 
 - [ ] **Step 3: Scan for personal data**
-Search workspace for any occurrences of user name `Fasok` or absolute paths and ensure none are present.
+Search workspace for any occurrences of user name or absolute paths and ensure none are present.
 
 - [ ] **Step 4: Initialize git repository and stage files**
 Configure safe directory and create initial clean commit.
