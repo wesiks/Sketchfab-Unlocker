@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import os
 import queue
 import re
@@ -8,10 +9,9 @@ import subprocess
 import sys
 import threading
 from pathlib import Path
-import tkinter as tk
-from tkinter import filedialog, messagebox, ttk
-import tkinter.font as tkfont
+from typing import Any, Optional
 
+BUNDLE_DIR = Path(sys._MEIPASS) if getattr(sys, "frozen", False) and hasattr(sys, "_MEIPASS") else Path(__file__).resolve().parent
 CURRENT_DIR = Path(sys.executable).resolve().parent if getattr(sys, "frozen", False) else Path(__file__).resolve().parent
 if str(CURRENT_DIR) not in sys.path:
     sys.path.insert(0, str(CURRENT_DIR))
@@ -19,802 +19,291 @@ if str(CURRENT_DIR) not in sys.path:
 import main
 
 
-class LogRedirector:
-    def __init__(self, queue_obj, orig_stream):
-        self.queue = queue_obj
-        self.orig_stream = orig_stream
+class Api:
+    def __init__(self):
+        self.window = None
+        self._cancel_flag = False
+        self._is_maximized = False
 
-    def write(self, text):
-        if text:
-            self.queue.put(("log", text))
+    def set_window(self, win):
+        self.window = win
+
+    def get_initial_state(self) -> dict[str, Any]:
+        node_path = shutil.which("node") or shutil.which("nodejs")
+        worker, wasm_file = main._wasm_decrypt_paths()
+        return {
+            "default_output_dir": str(main.DOWNLOADS),
+            "node_ready": bool(node_path),
+            "wasm_ready": bool(worker and wasm_file),
+        }
+
+    def select_folder(self, initial_dir: str = "") -> Optional[str]:
+        chosen = None
+        try:
+            import webview
+            target = initial_dir if initial_dir and Path(initial_dir).is_dir() else str(main.DOWNLOADS)
+            res = self.window.create_file_dialog(webview.FileDialog.FOLDER, directory=target)
+            if res and len(res) > 0:
+                chosen = str(res[0])
+        except Exception:
+            pass
+
+        if not chosen:
             try:
-                self.orig_stream.write(text)
-                self.orig_stream.flush()
+                import tkinter as tk
+                from tkinter import filedialog
+                root = tk.Tk()
+                root.withdraw()
+                root.attributes("-topmost", True)
+                res = filedialog.askdirectory(initialdir=initial_dir or str(main.DOWNLOADS))
+                root.destroy()
+                if res:
+                    chosen = str(res)
+            except Exception:
+                pass
+        return chosen
+
+    def open_folder(self, path: str) -> None:
+        try:
+            target = Path(path) if path else main.DOWNLOADS
+            target.mkdir(parents=True, exist_ok=True)
+            if sys.platform.startswith("win"):
+                os.startfile(str(target))
+            else:
+                subprocess.run(["xdg-open", str(target)], check=False)
+        except Exception:
+            pass
+
+    def open_model_file(self, folder_path: str) -> None:
+        try:
+            p = Path(folder_path)
+            candidates = list(p.glob("*.glb")) + list(p.glob("*.gltf"))
+            if candidates:
+                if sys.platform.startswith("win"):
+                    os.startfile(str(candidates[0]))
+                else:
+                    subprocess.run(["xdg-open", str(candidates[0])], check=False)
+            else:
+                self.open_folder(folder_path)
+        except Exception:
+            pass
+
+    def get_clipboard(self) -> str:
+        try:
+            import tkinter as tk
+            root = tk.Tk()
+            root.withdraw()
+            text = root.clipboard_get()
+            root.destroy()
+            return text or ""
+        except Exception:
+            return ""
+
+    def get_my_models(self, save_dir: str) -> list[dict[str, Any]]:
+        try:
+            p = Path(save_dir) if save_dir else main.DOWNLOADS
+            if not p.is_dir():
+                return []
+            res = []
+            for folder in p.iterdir():
+                if folder.is_dir():
+                    has_model = list(folder.glob("*.gltf")) + list(folder.glob("*.glb"))
+                    if has_model or (folder / "info.json").exists():
+                        total_bytes = sum(f.stat().st_size for f in folder.rglob("*") if f.is_file())
+                        file_count = sum(1 for f in folder.rglob("*") if f.is_file())
+                        if total_bytes >= 1024 * 1024:
+                            size_str = f"{total_bytes / (1024 * 1024):.1f} МБ"
+                        else:
+                            size_str = f"{max(1, total_bytes // 1024)} КБ"
+                        res.append({
+                            "name": folder.name,
+                            "path": str(folder),
+                            "size": size_str,
+                            "files": file_count,
+                            "mtime": folder.stat().st_mtime
+                        })
+            res.sort(key=lambda x: x["mtime"], reverse=True)
+            return res
+        except Exception:
+            return []
+
+    def test_proxy(self, data: dict[str, Any]) -> dict[str, Any]:
+        try:
+            import urllib.request
+            ptype = str(data.get("type", "SOCKS5")).lower()
+            host = str(data.get("host", "")).strip()
+            port = str(data.get("port", "")).strip()
+            user = str(data.get("user", "")).strip()
+            pw = str(data.get("pass", "")).strip()
+            if not host or not port:
+                return {"success": False, "error": "Не указан host или port"}
+            auth = f"{user}:{pw}@" if user and pw else ""
+            proxy_url = f"{ptype}://{auth}{host}:{port}"
+            req = urllib.request.Request("https://sketchfab.com", headers={"User-Agent": main.USER_AGENT})
+            handler = urllib.request.ProxyHandler({"http": proxy_url, "https": proxy_url})
+            opener = urllib.request.build_opener(handler)
+            resp = opener.open(req, timeout=6)
+            if resp.status in (200, 301, 302):
+                return {"success": True}
+            return {"success": False, "error": f"HTTP {resp.status}"}
+        except Exception as e:
+            return {"success": False, "error": str(e)}
+
+    def minimize_window(self) -> None:
+        if self.window:
+            self.window.minimize()
+
+    def maximize_window(self) -> None:
+        if self.window:
+            if self._is_maximized:
+                self.window.restore()
+                self._is_maximized = False
+            else:
+                self.window.maximize()
+                self._is_maximized = True
+
+    def close_window(self) -> None:
+        if self.window:
+            self.window.destroy()
+
+    def cancel_queue(self) -> None:
+        self._cancel_flag = True
+
+    def start_queue(self, payload: dict[str, Any]) -> None:
+        items = payload.get("items", [])
+        save_path = payload.get("savePath")
+        clean_output = payload.get("cleanOutput", True)
+        proxy = payload.get("proxy")
+        auto_open = payload.get("autoOpen", False)
+        self._cancel_flag = False
+
+        def worker():
+            out_dir = Path(save_path) if save_path else main.DOWNLOADS
+            out_dir.mkdir(parents=True, exist_ok=True)
+            total = len(items)
+            success_count = 0
+
+            for idx, item in enumerate(items):
+                if self._cancel_flag:
+                    break
+                item_id = item.get("id")
+                uid = item.get("uid")
+                url = item.get("url") or f"https://sketchfab.com/3d-models/{uid}"
+
+                self._send_js("onQueueProgress", {
+                    "id": item_id,
+                    "uid": uid,
+                    "status": "downloading",
+                    "statusText": "Подготовка...",
+                    "subText": f"[{idx + 1}/{total}] Инициализация...",
+                    "percent": 5
+                })
+
+                def make_progress(i_id=item_id, u=uid):
+                    def cb(token):
+                        pct = 10
+                        msg = "Загрузка..."
+                        if "step:viewer" in token:
+                            pct, msg = 20, "Чтение метаданных..."
+                        elif "step:model" in token:
+                            pct, msg = 30, "Модель обнаружена"
+                        elif "step:keys" in token:
+                            pct, msg = 45, "Получение ключей..."
+                        elif "step:mesh" in token:
+                            pct, msg = 65, "Загрузка геометрии..."
+                        elif "step:decrypt" in token:
+                            pct, msg = 78, "Расшифровка..."
+                        elif "step:textures" in token:
+                            pct, msg = 88, "Загрузка текстур..."
+                        elif "step:export" in token:
+                            pct, msg = 95, "Экспорт glTF..."
+                        elif "step:done" in token:
+                            pct, msg = 100, "Готово"
+                        self._send_js("onQueueProgress", {
+                            "id": i_id,
+                            "uid": u,
+                            "status": "downloading",
+                            "statusText": f"Загрузка... {pct}%",
+                            "subText": msg,
+                            "percent": pct
+                        })
+                    return cb
+
+                try:
+                    res = main.download_one(
+                        url,
+                        out_root=out_dir,
+                        proxy=proxy,
+                        progress=make_progress(item_id, uid),
+                        clean_output=clean_output
+                    )
+                    success_count += 1
+                    res_path = Path(res["path"])
+                    folder_bytes = sum(f.stat().st_size for f in res_path.rglob("*") if f.is_file())
+                    folder_files = sum(1 for f in res_path.rglob("*") if f.is_file())
+                    if folder_bytes >= 1024 * 1024:
+                        size_text = f"{folder_bytes / (1024 * 1024):.1f} МБ"
+                    else:
+                        size_text = f"{max(1, folder_bytes // 1024)} КБ"
+                    self._send_js("onQueueProgress", {
+                        "id": item_id,
+                        "uid": uid,
+                        "status": "done",
+                        "statusText": "Готово",
+                        "subText": f"{size_text} · {folder_files} файла",
+                        "percent": 100,
+                        "name": res.get("name") or res_path.name,
+                        "path": str(res_path)
+                    })
+                except Exception as e:
+                    self._send_js("onQueueProgress", {
+                        "id": item_id,
+                        "uid": uid,
+                        "status": "error",
+                        "statusText": "Ошибка",
+                        "subText": str(e)[:45],
+                        "percent": 0
+                    })
+
+            if auto_open and success_count > 0:
+                self.open_folder(str(out_dir))
+
+            self._send_js("onQueueFinish", {
+                "message": f"Готово! Успешно скачано {success_count} из {total}"
+            })
+
+        threading.Thread(target=worker, daemon=True).start()
+
+    def _send_js(self, fn_name: str, data: dict[str, Any]) -> None:
+        if self.window:
+            try:
+                payload = json.dumps(data, ensure_ascii=False)
+                self.window.evaluate_js(f"window.{fn_name}({payload});")
             except Exception:
                 pass
 
-    def flush(self):
-        try:
-            self.orig_stream.flush()
-        except Exception:
-            pass
 
-
-class SketchfabUnlockerApp:
+class TkinterFallbackApp:
     BG_ROOT = "#0B0E14"
     BG_CARD = "#151922"
     BORDER = "#252D3D"
-    ACCENT = "#6366F1"
-    ACCENT_HOVER = "#4F46E5"
-    ACCENT_ACTIVE = "#4338CA"
+    ACCENT = "#2563EB"
     TEXT_MAIN = "#F3F4F6"
     TEXT_MUTED = "#9CA3AF"
-    TEXT_LOG = "#8B949E"
-    BG_LOG = "#0C1017"
-    SUCCESS = "#10B981"
-    WARNING = "#F59E0B"
-    ERROR = "#EF4444"
-    BTN_SECONDARY_BG = "#252D3D"
-    BTN_SECONDARY_HOVER = "#323B4E"
-    BTN_SECONDARY_ACTIVE = "#1F2633"
-    BTN_DISABLED_BG = "#1A202C"
-    BTN_DISABLED_FG = "#4B5563"
 
-    def __init__(self, root: tk.Tk):
+    def __init__(self, root):
         self.root = root
-        self.queue = queue.Queue()
-        self.is_busy = False
-        self.current_worker = None
-
-        self.font_family = self._detect_font_family()
-        self._check_environment()
-        self._setup_window()
-        self._setup_styles()
-        self._build_ui()
-        self._setup_streams()
-        self._log_initial_status()
-
-        self.root.after(50, self._poll_queue)
-        self.root.protocol("WM_DELETE_WINDOW", self._on_close)
-
-    def _detect_font_family(self) -> str:
-        try:
-            fams = tkfont.families()
-            if "Segoe UI Variable Display" in fams:
-                return "Segoe UI Variable Display"
-            if "Segoe UI" in fams:
-                return "Segoe UI"
-        except Exception:
-            pass
-        return "Arial"
-
-    def _check_environment(self) -> None:
-        self.node_path = shutil.which("node") or shutil.which("nodejs")
-        self.node_ready = bool(self.node_path)
-        worker, wasm_file = main._wasm_decrypt_paths()
-        self.wasm_ready = bool(worker and wasm_file)
-
-    def _setup_window(self) -> None:
         self.root.title("Sketchfab Unlocker")
-        self.root.minsize(600, 550)
+        self.root.geometry("700x550")
         self.root.configure(bg=self.BG_ROOT)
-
-        w, h = 740, 720
-        screen_w = self.root.winfo_screenwidth()
-        screen_h = self.root.winfo_screenheight()
-        x = max(0, (screen_w - w) // 2)
-        y = max(0, (screen_h - h) // 2)
-        self.root.geometry(f"{w}x{h}+{x}+{y}")
-
-    def _setup_styles(self) -> None:
-        self.style = ttk.Style()
-        try:
-            self.style.theme_use("clam")
-        except Exception:
-            pass
-
-        self.style.configure(
-            "Dark.Horizontal.TProgressbar",
-            troughcolor=self.BG_ROOT,
-            background=self.ACCENT,
-            bordercolor=self.BORDER,
-            lightcolor=self.ACCENT,
-            darkcolor=self.ACCENT,
-        )
-        self.style.configure(
-            "Dark.Vertical.TScrollbar",
-            troughcolor=self.BG_ROOT,
-            background=self.BORDER,
-            bordercolor=self.BG_ROOT,
-            arrowcolor=self.TEXT_MUTED,
-        )
-        self.style.map(
-            "Dark.Vertical.TScrollbar",
-            background=[("active", self.BTN_SECONDARY_HOVER), ("pressed", self.BTN_SECONDARY_ACTIVE)],
-        )
-
-    def create_button(
-        self,
-        parent,
-        text,
-        command,
-        bg="#252D3D",
-        fg="#F3F4F6",
-        hover_bg="#323B4E",
-        active_bg="#1F2633",
-        font=None,
-        padx=12,
-        pady=6,
-    ) -> tk.Button:
-        btn = tk.Button(
-            parent,
-            text=text,
-            command=command,
-            bg=bg,
-            fg=fg,
-            activebackground=active_bg,
-            activeforeground=fg,
-            relief="flat",
-            bd=0,
-            highlightthickness=0,
-            font=font or (self.font_family, 9, "bold"),
-            cursor="hand2",
-            padx=padx,
-            pady=pady,
-        )
-        btn.default_bg = bg
-        btn.hover_bg = hover_bg
-        btn.default_fg = fg
-
-        def on_enter(e):
-            if str(btn["state"]) != "disabled":
-                btn.configure(bg=btn.hover_bg)
-
-        def on_leave(e):
-            if str(btn["state"]) != "disabled":
-                btn.configure(bg=btn.default_bg)
-
-        btn.bind("<Enter>", on_enter)
-        btn.bind("<Leave>", on_leave)
-        return btn
-
-    def set_button_enabled(self, btn: tk.Button, enabled: bool, bg=None, fg=None) -> None:
-        if enabled:
-            use_bg = bg if bg is not None else getattr(btn, "default_bg", self.BTN_SECONDARY_BG)
-            use_fg = fg if fg is not None else getattr(btn, "default_fg", self.TEXT_MAIN)
-            btn.configure(state="normal", bg=use_bg, fg=use_fg, cursor="hand2")
-        else:
-            use_bg = bg if bg is not None else self.BTN_DISABLED_BG
-            use_fg = fg if fg is not None else self.BTN_DISABLED_FG
-            btn.configure(state="disabled", bg=use_bg, fg=use_fg, cursor="")
-
-    def _build_ui(self) -> None:
-        main_container = tk.Frame(self.root, bg=self.BG_ROOT)
-        main_container.pack(fill="both", expand=True, padx=20, pady=16)
-
-        header_frame = tk.Frame(main_container, bg=self.BG_ROOT)
-        header_frame.pack(fill="x", pady=(0, 14))
-
-        header_left = tk.Frame(header_frame, bg=self.BG_ROOT)
-        header_left.pack(side="left")
-
-        title_lbl = tk.Label(
-            header_left,
+        lbl = tk.Label(
+            self.root,
             text="Sketchfab Unlocker",
-            font=(self.font_family, 16, "bold"),
-            fg=self.TEXT_MAIN,
-            bg=self.BG_ROOT,
-        )
-        title_lbl.pack(side="left")
-
-        badge_lbl = tk.Label(
-            header_left,
-            text="v2.0 Portable",
-            font=(self.font_family, 8, "bold"),
-            fg=self.TEXT_MUTED,
-            bg=self.BORDER,
-            padx=8,
-            pady=2,
-        )
-        badge_lbl.pack(side="left", padx=(10, 0))
-
-        header_right = tk.Frame(header_frame, bg=self.BG_ROOT)
-        header_right.pack(side="right")
-
-        node_fg = self.SUCCESS if self.node_ready else self.ERROR
-        node_lbl = tk.Label(
-            header_right,
-            text=f"● Node.js: {'Ready' if self.node_ready else 'Missing'}",
-            font=(self.font_family, 9, "bold"),
-            fg=node_fg,
-            bg=self.BG_CARD,
-            padx=10,
-            pady=4,
-            highlightbackground=self.BORDER,
-            highlightthickness=1,
-        )
-        node_lbl.pack(side="left", padx=(0, 8))
-
-        wasm_fg = self.SUCCESS if self.wasm_ready else self.ERROR
-        wasm_lbl = tk.Label(
-            header_right,
-            text=f"● WASM: {'Ready' if self.wasm_ready else 'Missing'}",
-            font=(self.font_family, 9, "bold"),
-            fg=wasm_fg,
-            bg=self.BG_CARD,
-            padx=10,
-            pady=4,
-            highlightbackground=self.BORDER,
-            highlightthickness=1,
-        )
-        wasm_lbl.pack(side="left")
-
-        input_card = tk.Frame(
-            main_container,
-            bg=self.BG_CARD,
-            highlightbackground=self.BORDER,
-            highlightthickness=1,
-            bd=0,
-        )
-        input_card.pack(fill="x", pady=(0, 12))
-
-        input_inner = tk.Frame(input_card, bg=self.BG_CARD, padx=14, pady=12)
-        input_inner.pack(fill="x")
-
-        input_top = tk.Frame(input_inner, bg=self.BG_CARD)
-        input_top.pack(fill="x", pady=(0, 8))
-
-        input_lbl = tk.Label(
-            input_top,
-            text="Ссылка на 3D-модель (или несколько ссылок):",
-            font=(self.font_family, 10, "bold"),
-            fg=self.TEXT_MAIN,
-            bg=self.BG_CARD,
-        )
-        input_lbl.pack(side="left")
-
-        input_actions = tk.Frame(input_top, bg=self.BG_CARD)
-        input_actions.pack(side="right")
-
-        self.paste_btn = self.create_button(
-            input_actions,
-            text="Вставить из буфера",
-            command=self.paste_clipboard,
-            bg=self.BTN_SECONDARY_BG,
-            hover_bg=self.BTN_SECONDARY_HOVER,
-            active_bg=self.BTN_SECONDARY_ACTIVE,
-            fg=self.TEXT_MAIN,
-            font=(self.font_family, 8, "bold"),
-            padx=10,
-            pady=4,
-        )
-        self.paste_btn.pack(side="left", padx=(0, 6))
-
-        self.clear_btn = self.create_button(
-            input_actions,
-            text="Очистить",
-            command=self.clear_urls,
-            bg=self.BTN_SECONDARY_BG,
-            hover_bg=self.BTN_SECONDARY_HOVER,
-            active_bg=self.BTN_SECONDARY_ACTIVE,
-            fg=self.TEXT_MAIN,
-            font=(self.font_family, 8, "bold"),
-            padx=10,
-            pady=4,
-        )
-        self.clear_btn.pack(side="left")
-
-        self.url_text = tk.Text(
-            input_inner,
-            height=3,
-            font=(self.font_family, 9),
+            font=("Segoe UI", 16, "bold"),
             bg=self.BG_ROOT,
             fg=self.TEXT_MAIN,
-            insertbackground=self.TEXT_MAIN,
-            relief="flat",
-            highlightbackground=self.BORDER,
-            highlightthickness=1,
-            highlightcolor=self.ACCENT,
-            padx=8,
-            pady=6,
-            wrap="word",
         )
-        self.url_text.pack(fill="x")
-
-        settings_card = tk.Frame(
-            main_container,
-            bg=self.BG_CARD,
-            highlightbackground=self.BORDER,
-            highlightthickness=1,
-            bd=0,
-        )
-        settings_card.pack(fill="x", pady=(0, 12))
-
-        settings_inner = tk.Frame(settings_card, bg=self.BG_CARD, padx=14, pady=12)
-        settings_inner.pack(fill="x")
-
-        row1 = tk.Frame(settings_inner, bg=self.BG_CARD)
-        row1.pack(fill="x", pady=(0, 10))
-
-        dir_lbl = tk.Label(
-            row1,
-            text="Папка сохранения:",
-            font=(self.font_family, 9, "bold"),
-            fg=self.TEXT_MUTED,
-            bg=self.BG_CARD,
-            width=16,
-            anchor="w",
-        )
-        dir_lbl.pack(side="left")
-
-        self.out_dir_var = tk.StringVar(value=str(main.DOWNLOADS))
-        self.out_dir_entry = tk.Entry(
-            row1,
-            textvariable=self.out_dir_var,
-            font=(self.font_family, 9),
-            bg=self.BG_ROOT,
-            fg=self.TEXT_MAIN,
-            insertbackground=self.TEXT_MAIN,
-            relief="flat",
-            highlightbackground=self.BORDER,
-            highlightthickness=1,
-            highlightcolor=self.ACCENT,
-        )
-        self.out_dir_entry.pack(side="left", fill="x", expand=True, padx=(0, 8))
-
-        self.browse_btn = self.create_button(
-            row1,
-            text="Обзор...",
-            command=self.browse_output_dir,
-            bg=self.BTN_SECONDARY_BG,
-            hover_bg=self.BTN_SECONDARY_HOVER,
-            active_bg=self.BTN_SECONDARY_ACTIVE,
-            fg=self.TEXT_MAIN,
-            font=(self.font_family, 8, "bold"),
-            padx=10,
-            pady=4,
-        )
-        self.browse_btn.pack(side="left", padx=(0, 6))
-
-        self.open_folder_btn = self.create_button(
-            row1,
-            text="Открыть папку",
-            command=self.open_output_dir,
-            bg=self.BTN_SECONDARY_BG,
-            hover_bg=self.BTN_SECONDARY_HOVER,
-            active_bg=self.BTN_SECONDARY_ACTIVE,
-            fg=self.TEXT_MAIN,
-            font=(self.font_family, 8, "bold"),
-            padx=10,
-            pady=4,
-        )
-        self.open_folder_btn.pack(side="left")
-
-        row2 = tk.Frame(settings_inner, bg=self.BG_CARD)
-        row2.pack(fill="x")
-
-        self.clean_var = tk.BooleanVar(value=True)
-        clean_cb = tk.Checkbutton(
-            row2,
-            text="Очищать временные файлы (.key, .osgjs)",
-            variable=self.clean_var,
-            bg=self.BG_CARD,
-            fg=self.TEXT_MAIN,
-            selectcolor=self.BG_ROOT,
-            activebackground=self.BG_CARD,
-            activeforeground=self.TEXT_MAIN,
-            font=(self.font_family, 9),
-            highlightthickness=0,
-            bd=0,
-            cursor="hand2",
-        )
-        clean_cb.pack(side="left")
-
-        proxy_container = tk.Frame(row2, bg=self.BG_CARD)
-        proxy_container.pack(side="right")
-
-        proxy_lbl = tk.Label(
-            proxy_container,
-            text="Прокси:",
-            font=(self.font_family, 9, "bold"),
-            fg=self.TEXT_MUTED,
-            bg=self.BG_CARD,
-        )
-        proxy_lbl.pack(side="left", padx=(0, 6))
-
-        self.proxy_var = tk.StringVar(value="")
-        self.proxy_entry = tk.Entry(
-            proxy_container,
-            textvariable=self.proxy_var,
-            font=(self.font_family, 9),
-            bg=self.BG_ROOT,
-            fg=self.TEXT_MAIN,
-            insertbackground=self.TEXT_MAIN,
-            relief="flat",
-            highlightbackground=self.BORDER,
-            highlightthickness=1,
-            highlightcolor=self.ACCENT,
-            width=24,
-        )
-        self.proxy_entry.pack(side="left")
-
-        action_frame = tk.Frame(main_container, bg=self.BG_ROOT)
-        action_frame.pack(fill="x", pady=(0, 12))
-
-        self.download_btn = self.create_button(
-            action_frame,
-            text="Скачать модель",
-            command=self.start_download,
-            bg=self.ACCENT,
-            hover_bg=self.ACCENT_HOVER,
-            active_bg=self.ACCENT_ACTIVE,
-            fg="#FFFFFF",
-            font=(self.font_family, 11, "bold"),
-            pady=9,
-        )
-        self.download_btn.pack(fill="x", pady=(0, 8))
-
-        progress_info_frame = tk.Frame(action_frame, bg=self.BG_ROOT)
-        progress_info_frame.pack(fill="x", pady=(0, 4))
-
-        self.status_label = tk.Label(
-            progress_info_frame,
-            text="Готов к загрузке",
-            font=(self.font_family, 9),
-            fg=self.TEXT_MUTED,
-            bg=self.BG_ROOT,
-            anchor="w",
-        )
-        self.status_label.pack(side="left", fill="x", expand=True)
-
-        self.step_label = tk.Label(
-            progress_info_frame,
-            text="0%",
-            font=(self.font_family, 9, "bold"),
-            fg=self.TEXT_MUTED,
-            bg=self.BG_ROOT,
-            anchor="e",
-        )
-        self.step_label.pack(side="right")
-
-        self.progress_bar = ttk.Progressbar(
-            action_frame,
-            style="Dark.Horizontal.TProgressbar",
-            orient="horizontal",
-            mode="determinate",
-            maximum=100,
-        )
-        self.progress_bar.pack(fill="x")
-
-        log_card = tk.Frame(
-            main_container,
-            bg=self.BG_CARD,
-            highlightbackground=self.BORDER,
-            highlightthickness=1,
-            bd=0,
-        )
-        log_card.pack(fill="both", expand=True)
-
-        log_inner = tk.Frame(log_card, bg=self.BG_CARD, padx=14, pady=10)
-        log_inner.pack(fill="both", expand=True)
-
-        log_top = tk.Frame(log_inner, bg=self.BG_CARD)
-        log_top.pack(fill="x", pady=(0, 6))
-
-        log_lbl = tk.Label(
-            log_top,
-            text="Журнал операций:",
-            font=(self.font_family, 9, "bold"),
-            fg=self.TEXT_MUTED,
-            bg=self.BG_CARD,
-        )
-        log_lbl.pack(side="left")
-
-        clear_log_btn = self.create_button(
-            log_top,
-            text="Очистить",
-            command=self.clear_log,
-            bg=self.BTN_SECONDARY_BG,
-            hover_bg=self.BTN_SECONDARY_HOVER,
-            active_bg=self.BTN_SECONDARY_ACTIVE,
-            fg=self.TEXT_MAIN,
-            font=(self.font_family, 8, "bold"),
-            padx=8,
-            pady=3,
-        )
-        clear_log_btn.pack(side="right")
-
-        text_container = tk.Frame(log_inner, bg=self.BG_LOG)
-        text_container.pack(fill="both", expand=True)
-
-        self.log_text = tk.Text(
-            text_container,
-            font=("Consolas", 9),
-            bg=self.BG_LOG,
-            fg=self.TEXT_LOG,
-            insertbackground=self.TEXT_MAIN,
-            relief="flat",
-            highlightbackground=self.BORDER,
-            highlightthickness=1,
-            wrap="word",
-            padx=8,
-            pady=8,
-        )
-        self.log_text.pack(side="left", fill="both", expand=True)
-
-        scrollbar = ttk.Scrollbar(
-            text_container,
-            orient="vertical",
-            command=self.log_text.yview,
-            style="Dark.Vertical.TScrollbar",
-        )
-        scrollbar.pack(side="right", fill="y")
-        self.log_text.configure(yscrollcommand=scrollbar.set)
-
-        self.log_text.tag_configure("success", foreground=self.SUCCESS, font=("Consolas", 9, "bold"))
-        self.log_text.tag_configure("warning", foreground=self.WARNING)
-        self.log_text.tag_configure("error", foreground=self.ERROR, font=("Consolas", 9, "bold"))
-        self.log_text.tag_configure("accent", foreground="#818CF8")
-        self.log_text.tag_configure("normal", foreground=self.TEXT_LOG)
-        self.log_text.configure(state="disabled")
-
-    def _setup_streams(self) -> None:
-        self.orig_stdout = sys.stdout
-        self.orig_stderr = sys.stderr
-        sys.stdout = LogRedirector(self.queue, self.orig_stdout)
-        sys.stderr = LogRedirector(self.queue, self.orig_stderr)
-
-    def _log_initial_status(self) -> None:
-        self.append_log("Sketchfab Unlocker v2.0 Portable\n")
-        self.append_log(f"Node.js: {'Ready' if self.node_ready else 'Missing'}\n")
-        self.append_log(f"WASM Decryptor: {'Ready' if self.wasm_ready else 'Missing'}\n")
-        self.append_log(f"Папка сохранения: {self.out_dir_var.get()}\n")
-        self.append_log("Готов к работе.\n\n")
-
-    def paste_clipboard(self) -> None:
-        try:
-            content = self.root.clipboard_get()
-            if content:
-                current = self.url_text.get("1.0", tk.END).strip()
-                if current:
-                    self.url_text.insert(tk.END, "\n" + content.strip())
-                else:
-                    self.url_text.delete("1.0", tk.END)
-                    self.url_text.insert(tk.END, content.strip())
-                self.set_status("Ссылка вставлена из буфера обмена", self.TEXT_MUTED)
-        except Exception:
-            pass
-
-    def clear_urls(self) -> None:
-        self.url_text.delete("1.0", tk.END)
-        self.set_status("Поле ссылок очищено", self.TEXT_MUTED)
-
-    def browse_output_dir(self) -> None:
-        current = self.out_dir_var.get().strip() or str(main.DOWNLOADS)
-        chosen = filedialog.askdirectory(initialdir=current, title="Выберите папку для сохранения моделей")
-        if chosen:
-            self.out_dir_var.set(chosen)
-
-    def open_output_dir(self) -> None:
-        out_dir_str = self.out_dir_var.get().strip()
-        dest = Path(out_dir_str) if out_dir_str else main.DOWNLOADS
-        dest.mkdir(parents=True, exist_ok=True)
-        try:
-            if sys.platform.startswith("win"):
-                os.startfile(dest)
-            else:
-                subprocess.run(["xdg-open", str(dest)], check=False)
-        except Exception as e:
-            self.append_log(f"Не удалось открыть папку: {e}\n")
-
-    def clear_log(self) -> None:
-        self.log_text.configure(state="normal")
-        self.log_text.delete("1.0", tk.END)
-        self.log_text.configure(state="disabled")
-
-    def set_status(self, text: str, color=None, progress_val=None) -> None:
-        self.status_label.configure(text=text, fg=color or self.TEXT_MUTED)
-        if progress_val is not None:
-            val = max(0, min(100, progress_val))
-            self.progress_bar["value"] = val
-            self.step_label.configure(text=f"{int(val)}%")
-
-    def append_log(self, text: str) -> None:
-        self.log_text.configure(state="normal")
-        for line in text.splitlines(keepends=True):
-            stripped = line.strip()
-            tag = "normal"
-            if stripped.startswith("✓") or "done" in stripped.lower() or "успешно" in stripped.lower():
-                tag = "success"
-            elif stripped.startswith("⚠") or "warning" in stripped.lower() or "внимание" in stripped.lower():
-                tag = "warning"
-            elif "error" in stripped.lower() or "ошибка" in stripped.lower() or "failed" in stripped.lower():
-                tag = "error"
-            elif stripped.startswith("$") or stripped.startswith("[") or stripped.startswith("↓") or stripped.startswith("==="):
-                tag = "accent"
-            self.log_text.insert(tk.END, line, tag)
-        self.log_text.see(tk.END)
-        self.log_text.configure(state="disabled")
-
-    def set_busy_state(self, is_busy: bool) -> None:
-        self.is_busy = is_busy
-        if is_busy:
-            self.set_button_enabled(self.download_btn, False, self.BTN_DISABLED_BG, self.BTN_DISABLED_FG)
-            self.set_button_enabled(self.paste_btn, False)
-            self.set_button_enabled(self.clear_btn, False)
-            self.set_button_enabled(self.browse_btn, False)
-            self.url_text.configure(state="disabled")
-            self.root.config(cursor="wait")
-        else:
-            self.set_button_enabled(self.download_btn, True, self.ACCENT, "#FFFFFF")
-            self.set_button_enabled(self.paste_btn, True)
-            self.set_button_enabled(self.clear_btn, True)
-            self.set_button_enabled(self.browse_btn, True)
-            self.url_text.configure(state="normal")
-            self.root.config(cursor="")
-
-    def handle_step(self, token: str, model_index: int = 0, total_models: int = 1) -> None:
-        step_base = 0
-        step_text = ""
-        color = self.TEXT_MUTED
-
-        if token.startswith("step:viewer"):
-            step_text = "Получение информации о модели..."
-            step_base = 15
-        elif token.startswith("step:model"):
-            parts = token.split("|")
-            name = parts[1] if len(parts) > 1 else ""
-            author = parts[2] if len(parts) > 2 else ""
-            if name and author:
-                step_text = f"Модель: {name} ({author})"
-            elif name:
-                step_text = f"Модель: {name}"
-            else:
-                step_text = "Модель обнаружена"
-            color = self.TEXT_MAIN
-            step_base = 25
-        elif token.startswith("step:format"):
-            step_text = "Анализ структуры мешей..."
-            step_base = 35
-        elif token.startswith("step:keys"):
-            step_text = "Получение ключей расшифровки..."
-            step_base = 45
-        elif token.startswith("step:legacy"):
-            step_text = "Подготовка архивов..."
-            step_base = 50
-        elif token.startswith("step:mesh"):
-            step_text = "Загрузка геометрии..."
-            step_base = 60
-        elif token.startswith("step:decrypt"):
-            step_text = "Расшифровка..."
-            step_base = 75
-        elif token.startswith("step:textures"):
-            step_text = "Загрузка текстур..."
-            step_base = 85
-        elif token.startswith("step:textures_warn"):
-            step_text = "Загрузка текстур (с предупреждениями)..."
-            color = self.WARNING
-            step_base = 88
-        elif token.startswith("step:export"):
-            step_text = "Конвертация в glTF..."
-            step_base = 95
-        elif token.startswith("step:done"):
-            step_text = "Конвертация в glTF... Готово!"
-            color = self.SUCCESS
-            step_base = 100
-
-        if total_models > 1:
-            full_text = f"[{model_index + 1}/{total_models}] {step_text}"
-            model_slice = 100.0 / total_models
-            overall_progress = (model_index * model_slice) + (step_base / 100.0 * model_slice)
-        else:
-            full_text = step_text
-            overall_progress = step_base
-
-        self.set_status(full_text, color, overall_progress)
-
-    def start_download(self) -> None:
-        raw = self.url_text.get("1.0", tk.END).strip()
-        if not raw:
-            self.set_status("Введите ссылку на модель Sketchfab", self.WARNING)
-            return
-
-        lines = [line.strip() for line in raw.splitlines() if line.strip()]
-        urls = []
-        for line in lines:
-            for token in re.split(r"[\s,;]+", line):
-                token = token.strip()
-                if not token:
-                    continue
-                norm = main._normalize_url(token)
-                if norm:
-                    urls.append(norm)
-                elif re.search(r"sketchfab\.com", token, re.I):
-                    urls.append(token)
-                elif re.fullmatch(r"[a-f0-9]{32}", token, re.I):
-                    urls.append(f"https://sketchfab.com/3d-models/{token}")
-
-        urls = list(dict.fromkeys(urls))
-        if not urls:
-            self.set_status("Не найдено корректных ссылок на Sketchfab", self.WARNING)
-            return
-
-        out_dir_str = self.out_dir_var.get().strip()
-        out_dir = Path(out_dir_str) if out_dir_str else main.DOWNLOADS
-        proxy_val = self.proxy_var.get().strip() or None
-        clean_val = self.clean_var.get()
-
-        self.queue.put(("state", "busy"))
-        self.set_status("Запуск загрузки...", self.TEXT_MUTED, 5)
-
-        def worker():
-            success_count = 0
-            fail_count = 0
-            total = len(urls)
-            for idx, url in enumerate(urls):
-                if total > 1:
-                    self.queue.put(("status", f"[{idx + 1}/{total}] Инициализация {url}...", self.TEXT_MUTED, int(idx / total * 100)))
-                    self.queue.put(("log", f"\n=== [{idx + 1}/{total}] {url} ===\n"))
-                try:
-                    result = main.download_one(
-                        url,
-                        out_root=out_dir,
-                        proxy=proxy_val,
-                        progress=lambda token, m_idx=idx, m_tot=total: self.queue.put(("step", token, m_idx, m_tot)),
-                        clean_output=clean_val,
-                    )
-                    success_count += 1
-                    model_name = result.get("name") or Path(result["path"]).stem
-                    self.queue.put(("log", f"✓ Модель '{model_name}' успешно сохранена: {result['path']}\n"))
-                except Exception as e:
-                    fail_count += 1
-                    self.queue.put(("log", f"ERROR: Ошибка при скачивании {url}: {e}\n"))
-                    if total == 1:
-                        self.queue.put(("status", f"Ошибка: {e}", self.ERROR, 0))
-
-            if total > 1:
-                if fail_count == 0:
-                    self.queue.put(("status", f"Все модели успешно скачаны ({success_count}/{total})!", self.SUCCESS, 100))
-                else:
-                    self.queue.put(("status", f"Завершено: {success_count} успешно, {fail_count} с ошибками", self.WARNING, 100))
-            elif success_count == 1:
-                self.queue.put(("status", "Готово! Модель успешно скачана.", self.SUCCESS, 100))
-
-            self.queue.put(("state", "idle"))
-
-        self.current_worker = threading.Thread(target=worker, daemon=True)
-        self.current_worker.start()
-
-    def _poll_queue(self) -> None:
-        try:
-            while True:
-                item = self.queue.get_nowait()
-                msg_type = item[0]
-                if msg_type == "log":
-                    self.append_log(item[1])
-                elif msg_type == "step":
-                    token = item[1]
-                    m_idx = item[2] if len(item) > 2 else 0
-                    m_tot = item[3] if len(item) > 3 else 1
-                    self.handle_step(token, m_idx, m_tot)
-                elif msg_type == "status":
-                    text = item[1]
-                    color = item[2] if len(item) > 2 else self.TEXT_MUTED
-                    prog = item[3] if len(item) > 3 else None
-                    self.set_status(text, color, prog)
-                elif msg_type == "state":
-                    self.set_busy_state(item[1] == "busy")
-        except queue.Empty:
-            pass
-        self.root.after(50, self._poll_queue)
-
-    def _on_close(self) -> None:
-        try:
-            sys.stdout = self.orig_stdout
-            sys.stderr = self.orig_stderr
-        except Exception:
-            pass
-        self.root.destroy()
+        lbl.pack(pady=20)
 
 
 def main_gui() -> int:
@@ -827,10 +316,34 @@ def main_gui() -> int:
                 ctypes.windll.user32.SetProcessDPIAware()
             except Exception:
                 pass
-    root = tk.Tk()
-    app = SketchfabUnlockerApp(root)
-    root.mainloop()
-    return 0
+
+    html_file = BUNDLE_DIR / "ui" / "index.html"
+    if not html_file.exists():
+        html_file = CURRENT_DIR / "ui" / "index.html"
+
+    try:
+        import webview
+        api = Api()
+        window = webview.create_window(
+            title="Sketchfab Unlocker",
+            url=str(html_file),
+            width=1220,
+            height=780,
+            frameless=True,
+            easy_drag=True,
+            min_size=(900, 620),
+            background_color="#0B0F19",
+            js_api=api
+        )
+        api.set_window(window)
+        webview.start(debug=False)
+        return 0
+    except Exception:
+        import tkinter as tk
+        root = tk.Tk()
+        app = TkinterFallbackApp(root)
+        root.mainloop()
+        return 0
 
 
 if __name__ == "__main__":
