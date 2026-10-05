@@ -1068,9 +1068,44 @@ def convert_to_model(
     raise RuntimeError("Conversion failed:\n" + "\n".join(errors))
 
 
-def cleanup_work_dir(work_dir: Path, keep: set[str]) -> None:
+def cleanup_work_dir(work_dir: Path, keep: set[str], clean_output: bool = True) -> None:
+    if clean_output:
+        allowed = set()
+        for p in work_dir.glob("*.gltf"):
+            allowed.add(p.name)
+            try:
+                data = json.loads(p.read_text(encoding="utf-8", errors="replace"))
+                for buf in data.get("buffers", []):
+                    uri = buf.get("uri")
+                    if uri and not uri.startswith("data:"):
+                        allowed.add(Path(uri).name)
+            except Exception:
+                pass
+        for p in work_dir.glob("*.glb"):
+            allowed.add(p.name)
+        allowed.add("info.json")
+        allowed.add("textures")
+        final_keep = {x for x in (set(keep) | allowed) if x in allowed or x.endswith(".gltf") or x.endswith(".glb")}
+        artifacts = {
+            "key.txt",
+            "key2.txt",
+            "file.osgjs",
+            "model_file.bin",
+            "model_file_wireframe.bin",
+            "textures_manifest.json",
+        }
+        final_keep.difference_update(artifacts)
+        tex_manifest = work_dir / "textures" / "textures_manifest.json"
+        if tex_manifest.is_file():
+            try:
+                tex_manifest.unlink()
+            except OSError:
+                pass
+    else:
+        final_keep = set(keep)
+
     for p in list(work_dir.iterdir()):
-        if p.name in keep:
+        if p.name in final_keep:
             continue
         try:
             if p.is_file():
@@ -1103,6 +1138,7 @@ def download_one(
     out_root: Optional[Path] = None,
     proxy: Optional[str] = None,
     progress: Optional[Callable[[str], None]] = None,
+    clean_output: bool = True,
 ) -> dict:
     """
     Download a single Sketchfab model (geometry only).
@@ -1178,30 +1214,47 @@ def download_one(
             out_dir, model_name, texture_map=tex_map, prefer="gltf"
         )
 
-        # Keep user-facing assets: glTF (or raw osgjs/bin) + textures
-        final_keep = {
-            model_path.name,
-            "info.json",
-            "textures",
-            "file.osgjs",
-            "model_file.bin",
-            "model_file_wireframe.bin",
-        }
-        for p in out_dir.glob("*.gltf"):
-            final_keep.add(p.name)
-        for p in out_dir.glob("*.glb"):
-            final_keep.add(p.name)
-        for p in out_dir.glob("*.bin"):
-            # keep gltf sidecars + mesh bins
-            final_keep.add(p.name)
-        for p in out_dir.glob("*.txt"):
-            final_keep.add(p.name)
-        for p in out_dir.glob("*.obj"):
-            final_keep.add(p.name)
-        for p in out_dir.glob("*.mtl"):
-            final_keep.add(p.name)
+        if clean_output:
+            final_keep = {
+                model_path.name,
+                "info.json",
+                "textures",
+            }
+            for p in out_dir.glob("*.gltf"):
+                final_keep.add(p.name)
+            for p in out_dir.glob("*.glb"):
+                final_keep.add(p.name)
+        else:
+            final_keep = {
+                model_path.name,
+                "info.json",
+                "textures",
+                "file.osgjs",
+                "model_file.bin",
+                "model_file_wireframe.bin",
+            }
+            for p in out_dir.glob("*.gltf"):
+                final_keep.add(p.name)
+            for p in out_dir.glob("*.glb"):
+                final_keep.add(p.name)
+            for p in out_dir.glob("*.bin"):
+                final_keep.add(p.name)
+            for p in out_dir.glob("*.txt"):
+                final_keep.add(p.name)
+            for p in out_dir.glob("*.obj"):
+                final_keep.add(p.name)
+            for p in out_dir.glob("*.mtl"):
+                final_keep.add(p.name)
 
-        cleanup_work_dir(out_dir, final_keep)
+        cleanup_work_dir(out_dir, final_keep, clean_output=clean_output)
+
+        if clean_output:
+            manifest = out_dir / "textures" / "textures_manifest.json"
+            if manifest.is_file():
+                try:
+                    manifest.unlink()
+                except OSError:
+                    pass
 
         # Prefer largest glTF/GLB as main deliverable if present
         gltfs = list(out_dir.glob("*.gltf")) + list(out_dir.glob("*.glb"))
@@ -1337,6 +1390,11 @@ def _parse_args(argv: Optional[list[str]] = None) -> argparse.Namespace:
         action="store_true",
         help="Less banner text",
     )
+    p.add_argument(
+        "--no-clean",
+        action="store_true",
+        default=False,
+    )
     return p.parse_args(argv)
 
 
@@ -1399,7 +1457,11 @@ def main(argv: Optional[list[str]] = None) -> int:
             log()
             log(f"--- [{i}/{len(urls)}] {url}")
         try:
-            result = download_one(url, out_root=out_root)
+            result = download_one(
+                url,
+                out_root=out_root,
+                clean_output=not args.no_clean,
+            )
         except KeyboardInterrupt:
             log("\nCancelled.")
             return 130
