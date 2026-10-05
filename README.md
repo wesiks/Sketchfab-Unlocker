@@ -1,38 +1,41 @@
-# Sketchfab CLI Downloader
+# Sketchfab Unlocker
+
+[![Version](https://img.shields.io/badge/version-2.0-indigo.svg)](https://github.com/wesiks/Sketchfab-Unlocker)
+[![Author](https://img.shields.io/badge/author-wesiks-blue.svg)](https://github.com/wesiks)
+[![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20Linux%20%7C%20macOS-lightgrey.svg)](https://github.com/wesiks/Sketchfab-Unlocker)
+[![Interface](https://img.shields.io/badge/interface-GUI%20%7C%20CLI-success.svg)](https://github.com/wesiks/Sketchfab-Unlocker)
+[![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
 **Language / Язык:** **English** | [Русский](README.ru.md)
 
-Download **public** 3D models from [Sketchfab](https://sketchfab.com) from the command line.
+**Sketchfab Unlocker** by **wesiks** is a utility designed to download and unlock public 3D models from [Sketchfab](https://sketchfab.com) in **glTF 2.0** format with high-resolution textures.
 
-- **No** Sketchfab account  
-- **No** API keys or tokens  
-- Works even when the model has **no** Download button  
-- Output: **glTF** (+ textures when available)  
-- Windows / Linux / macOS  
-- **Docker** — no need to install Python or Wine on the host  
-
-> Console-only tool (no Telegram bot).
+- **No** Sketchfab account required  
+- **No** API keys or authentication tokens needed  
+- Works even for models without an official Download button  
+- **Desktop GUI** with modern dark interface  
+- **Portable 1-Click Launchers** (`SketchfabUnlocker.exe`, `start.bat`, `SketchfabUnlocker.bat`)  
+- **Clean Output Mode** (automatically purges temporary decryption artifacts)  
+- Multi-platform CLI for Windows, Linux, and macOS  
+- Docker support for automated containerized environments  
 
 ---
 
-## Table of contents
+## Table of Contents
 
 1. [Features](#features)
-2. [Requirements](#requirements)
-3. [Quick start (Windows)](#quick-start-windows)
-4. [Quick start (Linux)](#quick-start-linux)
-5. [Quick start (macOS)](#quick-start-macos)
-6. [Quick start (Docker)](#quick-start-docker) ← **recommended for beginners**
-7. [How to use](#how-to-use)
-8. [Where files are saved](#where-files-are-saved)
-9. [CLI options](#cli-options)
-10. [Examples](#examples)
-11. [How it works](#how-it-works)
-12. [FAQ / troubleshooting](#faq--troubleshooting)
-13. [Project layout](#project-layout)
-14. [Publishing to GitHub](#publishing-to-github)
-15. [Legal disclaimer](#legal-disclaimer)
-16. [License & credits](#license--credits)
+2. [Quick Start: Windows Desktop GUI](#quick-start-windows-desktop-gui)
+3. [Quick Start: CLI](#quick-start-cli)
+4. [Quick Start: Docker](#quick-start-docker)
+5. [Clean Output Mode](#clean-output-mode)
+6. [CLI Usage and Options](#cli-usage-and-options)
+7. [Requirements](#requirements)
+8. [Where Files Are Saved](#where-files-are-saved)
+9. [How It Works](#how-it-works)
+10. [Troubleshooting & FAQ](#troubleshooting--faq)
+11. [Project Layout](#project-layout)
+12. [Legal Disclaimer](#legal-disclaimer)
+13. [License & Credits](#license--credits)
 
 ---
 
@@ -40,385 +43,109 @@ Download **public** 3D models from [Sketchfab](https://sketchfab.com) from the c
 
 | Feature | Description |
 |---|---|
-| Public model download | By full URL or 32-char hex UID |
-| Models without Download | Uses the same mesh data the public 3D viewer loads |
-| Multiple URLs | Pass several links in one run |
-| Proxy | `--proxy http://host:port` |
-| Output folder | `-o ./my_folder` |
-| Textures | Public texture API when available |
-| Conversion | glTF via `osgconv` (Windows tools) or Python fallback |
-| Docker | Image with Python + Wine + tools; models land in `./downloads` |
+| **Modern Desktop GUI** | Standalone dark-mode graphical user interface with clipboard paste, real-time logs, and folder open |
+| **Portable Launch** | Run immediately via `SketchfabUnlocker.exe`, `start.bat`, or `SketchfabUnlocker.bat` |
+| **Public Model Download** | Unlock models using standard web URLs or 32-character hexadecimal UIDs |
+| **No Download Button Required** | Accesses the public 3D viewer mesh stream |
+| **Clean Output Mode** | Deletes temporary decrypt files (`key.txt`, `file.osgjs`, `.bin` artifacts) automatically |
+| **glTF 2.0 Output** | Full glTF mesh output with external buffers and textures, ready for Blender, Unreal, and Unity |
+| **Batch Processing** | Download multiple URLs in a single run |
+| **Proxy Support** | Pass HTTP/HTTPS or SOCKS proxies |
+| **Cross-Platform** | Native Windows support, plus Linux, macOS, and Docker |
 
-**Not supported:**
-
-- private / password-protected models  
-- paid / exclusive downloads  
-- logging into a Sketchfab account  
+**Unsupported:**
+- Private or password-protected models
+- Paid store models
+- Direct account login
 
 ---
 
-## Requirements
+## Quick Start: Windows Desktop GUI
 
-### Required
+### Option A: Portable Standalone Executable
+1. Download the repository or release archive from [wesiks/Sketchfab-Unlocker](https://github.com/wesiks/Sketchfab-Unlocker).
+2. Launch `SketchfabUnlocker.exe`.
+3. Paste your Sketchfab model URL into the input field.
+4. Click **Скачать модель** (Download Model).
+5. When complete, click **Открыть папку** (Open Folder) to access your clean glTF model and textures.
 
-1. **Python 3.10+** (if not using Docker)  
-   - Windows: https://www.python.org/downloads/  
-   - Enable **“Add python.exe to PATH”** during install  
-   - Check: `python --version` or `py -3 --version`
+### Option B: Batch Launcher
+Double-click `start.bat` or `SketchfabUnlocker.bat`. The launcher automatically locates the standalone executable or system Python installation and starts the interface.
 
-2. **Internet** — to download models (and the Docker image if you use containers).
+---
 
-### Easiest path — Docker
+## Quick Start: CLI
 
-Install only [Docker](https://docs.docker.com/get-docker/) and follow  
-[Quick start (Docker)](#quick-start-docker).  
-The image already includes Python, Wine, and conversion tools.
-
-### Recommended (local Python)
-
-3. **Node.js 18+** — required for current Sketchfab `.binz` decryption (WASM)  
-   - Windows/macOS: https://nodejs.org/  
-   - Debian/Ubuntu: `sudo apt install nodejs`  
-   - Check: `node --version`
-
-4. **Conversion tools** (`tools/`, shipped in this repo)  
-   - `tools/wasm/` — `decrypt_worker.mjs` + `decrypt.wasm` (auto-refreshed from viewer if missing)  
-   - Static decrypt key is **fetched live** from Sketchfab viewer JS each run and cached in `tools/wasm/static_key.txt`  
-   - `osgconv.exe` + DLLs — preferred glTF conversion (optional Python fallback)  
-   - If tools are missing: `python setup_tools.py`
-
-5. **Wine** — **Linux / macOS only**, for `osgconv.exe` (optional):
-
+### 1. Clone the repository
 ```bash
-# Debian / Ubuntu
-sudo apt update
-sudo apt install wine64
-
-# Fedora
-sudo dnf install wine
+git clone https://github.com/wesiks/Sketchfab-Unlocker.git
+cd Sketchfab-Unlocker
 ```
 
-Wine is **not** required on Windows.  
-Docker images already include Node.js + Wine + tools.
-
----
-
-## Quick start (Windows)
-
-### 1. Get the project
-
-```bat
-git clone https://github.com/seryi882/sketchfab-cli.git
-cd sketchfab-cli
+### 2. Install dependencies
+```bash
+pip install -r requirements.txt
 ```
 
-Or **Code → Download ZIP** on GitHub and extract the folder.
-
-### 2. Install Python dependencies
-
-Open **cmd** or **PowerShell** in the project folder:
-
-```bat
-py -3 -m pip install -r requirements.txt
-```
-
-If `py` is not found:
-
-```bat
-python -m pip install -r requirements.txt
-```
-
-### 3. Check tools
-
-The `tools\` folder should already exist. If not:
-
-```bat
-py -3 setup_tools.py
-```
-
-Verify:
-
-```bat
-py -3 main.py --check-tools
-```
-
-Expected files:
-
-```text
-tools\binz\binzDecrypt.exe
-tools\OsgConv\osgconv.exe
+### 3. Verify tools
+```bash
+python main.py --check-tools
 ```
 
 ### 4. Download a model
-
-```bat
-py -3 main.py https://sketchfab.com/3d-models/your-model-name-xxxxxxxx
+```bash
+python main.py "https://sketchfab.com/3d-models/your-model-name-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
 ```
 
-Or interactive (the script asks for a URL):
-
-```bat
-py -3 main.py
-```
-
-Done — open the `downloads\` folder.
+The model will be downloaded, decrypted, converted to glTF, and cleaned in the `downloads/` directory.
 
 ---
 
-## Quick start (Linux)
+## Quick Start: Docker
 
+Docker includes Python, Node.js, Wine, and conversion tools out of the box.
+
+### 1. Build container image
 ```bash
-# 1. Clone
-git clone https://github.com/seryi882/sketchfab-cli.git
-cd sketchfab-cli
-
-# 2. Virtual environment (recommended)
-python3 -m venv .venv
-source .venv/bin/activate
-
-# 3. Dependencies
-pip install -r requirements.txt
-
-# 4. Node.js (required for decrypt) + optional Wine for osgconv
-sudo apt update && sudo apt install -y nodejs wine64
-python setup_tools.py   # only if tools/ is missing
-
-# 5. Check and download
-python main.py --check-tools
-python main.py "https://sketchfab.com/3d-models/..."
-```
-
-Models appear in `./downloads/`.
-
----
-
-## Quick start (Docker)
-
-Best if you do not want to install Python, pip, or Wine.  
-You only need **Docker** (Docker Desktop on Windows/macOS, or `docker.io` + Compose on Linux).
-
-### 1. Install Docker
-
-- **Windows / macOS:** [Docker Desktop](https://www.docker.com/products/docker-desktop/)  
-- **Linux (Ubuntu/Debian):**
-  ```bash
-  sudo apt update
-  sudo apt install -y docker.io docker-compose-v2
-  sudo systemctl enable --now docker
-  # run docker without sudo (log out/in after):
-  sudo usermod -aG docker "$USER"
-  ```
-
-Check:
-
-```bash
-docker --version
-docker compose version
-```
-
-### 2. Clone and build the image
-
-```bash
-git clone https://github.com/seryi882/sketchfab-cli.git
-cd sketchfab-cli
-
-# First build may take several minutes (Python base image + Wine)
 docker compose build
 ```
 
-Or with plain Docker:
-
+### 2. Run download
 ```bash
-docker build -t sketchfab-cli:latest .
+docker compose run --rm downloader "https://sketchfab.com/3d-models/your-model-url"
 ```
 
-### 3. Download a model
-
-**Option A — helper script:**
-
-```bash
-# Linux / macOS
-chmod +x docker-download.sh
-./docker-download.sh "https://sketchfab.com/3d-models/..."
-
-# Windows (cmd / PowerShell)
-docker-download.bat "https://sketchfab.com/3d-models/..."
-```
-
-**Option B — docker compose:**
-
-```bash
-# one model → files in ./downloads on your machine
-docker compose run --rm downloader "https://sketchfab.com/3d-models/..."
-
-# several
-docker compose run --rm downloader URL1 URL2
-
-# tools / Wine check inside the container
-docker compose run --rm downloader --check-tools
-
-# help
-docker compose run --rm downloader --help
-
-# proxy
-docker compose run --rm downloader --proxy "http://host.docker.internal:7890" URL
-```
-
-**Option C — plain `docker run`:**
-
-```bash
-mkdir -p downloads
-
-docker run --rm \
-  -v "$PWD/downloads:/app/downloads" \
-  sketchfab-cli:latest \
-  "https://sketchfab.com/3d-models/..."
-```
-
-Windows (PowerShell):
-
-```powershell
-New-Item -ItemType Directory -Force downloads | Out-Null
-docker run --rm `
-  -v "${PWD}/downloads:/app/downloads" `
-  sketchfab-cli:latest `
-  "https://sketchfab.com/3d-models/..."
-```
-
-### 4. Where is the result?
-
-On the **host** (not “stuck inside Docker”):
-
-```text
-sketchfab-cli/downloads/Model_Name-xxxxxxxx/
-```
-
-`./downloads` is mounted into the container as `/app/downloads`.
-
-### Docker: useful commands
-
-| Action | Command |
-|---|---|
-| Build / rebuild image | `docker compose build` |
-| Download a model | `docker compose run --rm downloader URL` |
-| Check tools | `docker compose run --rm downloader --check-tools` |
-| Remove image | `docker rmi sketchfab-cli:latest` |
-
-### Docker: no internet from the container
-
-On some networks Docker’s bridge cannot reach HTTPS. Then:
-
-1. Uncomment in `docker-compose.yml`:
-   ```yaml
-   network_mode: host
-   ```
-2. Run again:
-   ```bash
-   docker compose run --rm downloader URL
-   ```
-
-> `network_mode: host` behaves differently on **Docker Desktop (Windows/macOS)** than on Linux.  
-> On Desktop, normal bridge + host VPN is often enough.
-
-### Docker: disk & RAM
-
-- Image size ~1–2 GB (Python + Wine + tools).  
-- Prefer **≥ 2 GB RAM** for the first build (add swap on small VPS).  
-- Downloaded models only use space under `./downloads` on the host.
+Models appear in `./downloads/` on the host machine.
 
 ---
 
-## Quick start (macOS)
+## Clean Output Mode
 
-```bash
-# Python: https://www.python.org/downloads/  or  brew install python
-git clone https://github.com/seryi882/sketchfab-cli.git
-cd sketchfab-cli
+By default, **Clean Output Mode** is enabled in both the GUI and the CLI.
 
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
+During extraction and conversion, several intermediate files are created:
+- `key.txt` and `key2.txt` (encryption keys extracted from stream)
+- `file.osgjs` (intermediate OSGJS scene graph)
+- `model_file.bin` and `model_file_wireframe.bin` (raw binary buffers)
+- `textures_manifest.json` (temporary texture map)
 
-# Node.js required for decrypt
-brew install node
-# Optional Wine for osgconv.exe
-brew install wine-stable
-python setup_tools.py   # only if tools/ is missing
+When Clean Output Mode finishes, all intermediate files are purged automatically. Only the final production-ready assets remain:
+- `Model_Name.gltf`
+- Referenced `.bin` geometry buffers
+- `textures/` directory
+- `info.json` (metadata, title, author, source URL)
 
-python main.py --check-tools
-python main.py "https://sketchfab.com/3d-models/..."
-```
-
-> On Apple Silicon, Wine may need extra setup.  
-> If `osgconv` / `binzDecrypt` fail, the script may fall back to pure-Python glTF (quality can differ).
-
----
-
-## How to use
-
-### A — full URL
-
-1. Open the model on sketchfab.com (must load **without login**).  
-2. Copy the address bar URL, e.g.:
-
-```text
-https://sketchfab.com/3d-models/cool-robot-a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4
-```
-
-3. Run:
-
-```bash
-python main.py "https://sketchfab.com/3d-models/cool-robot-a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4"
-```
-
-### B — UID only
-
-UID is the 32 hex characters at the end of the URL:
-
-```bash
-python main.py a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4
-```
-
-### C — several models
-
-```bash
-python main.py URL1 URL2 URL3
-```
-
-### D — interactive
-
-```bash
-python main.py
-# > paste URL and press Enter
-```
+### Keeping Intermediate Files
+If you want to keep raw decryption files for debugging:
+- **CLI**: Pass the `--no-clean` flag:
+  ```bash
+  python main.py --no-clean "https://sketchfab.com/3d-models/..."
+  ```
+- **GUI**: Uncheck the **Очищать временные файлы** option.
 
 ---
 
-## Where files are saved
-
-Default layout:
-
-```text
-sketchfab-cli/
-└── downloads/
-    └── Model_Name-abcd1234/
-        ├── Model_Name.gltf      ← main file (open in Blender)
-        ├── *.bin                ← mesh buffers next to glTF
-        ├── textures/            ← textures if available
-        └── info.json            ← name, author, source URL
-```
-
-**Blender:** `File → Import → glTF 2.0` → pick the `.gltf` file.
-
-Custom folder:
-
-```bash
-python main.py -o ./my_models "https://sketchfab.com/3d-models/..."
-```
-
----
-
-## CLI options
+## CLI Usage and Options
 
 ```text
 python main.py [OPTIONS] [URL_OR_UID ...]
@@ -426,255 +153,150 @@ python main.py [OPTIONS] [URL_OR_UID ...]
 
 | Option | Description |
 |---|---|
-| `URL_OR_UID` | One or more Sketchfab URLs or UIDs |
-| `-o`, `--output DIR` | Output directory (default: `downloads/`) |
-| `--proxy URL` | Proxy, e.g. `http://127.0.0.1:8080` |
-| `--check-tools` | Verify tools / curl / wine and exit |
-| `-q`, `--quiet` | Less banner text |
-| `-h`, `--help` | Help |
+| `urls` | One or more Sketchfab model URLs or 32-character UIDs |
+| `-o`, `--output DIR` | Target output directory (default: `downloads/`) |
+| `--proxy PROXY_URL` | HTTP, HTTPS, or SOCKS proxy address |
+| `--no-clean` | Preserve temporary decryption and conversion files |
+| `--check-tools` | Verify Node.js, WASM worker, Wine, and conversion binaries |
+| `-q`, `--quiet` | Suppress non-essential banner output |
+| `-h`, `--help` | Show help and argument summary |
 
----
+### CLI Examples
 
-## Examples
-
+Download a single model:
 ```bash
-# One model
 python main.py "https://sketchfab.com/3d-models/example-0123456789abcdef0123456789abcdef"
-
-# Several
-python main.py URL1 URL2
-
-# Custom folder
-python main.py -o ~/3d/sketchfab URL
-
-# Proxy
-python main.py --proxy "http://127.0.0.1:7890" URL
-
-# Diagnostics only
-python main.py --check-tools
 ```
 
-### Windows: `download.bat`
-
-```bat
-download.bat "https://sketchfab.com/3d-models/..."
-```
-
-### Linux/macOS: `download.sh`
-
+Download by 32-character UID:
 ```bash
-chmod +x download.sh
-./download.sh "https://sketchfab.com/3d-models/..."
+python main.py 0123456789abcdef0123456789abcdef
 ```
 
-### Docker (short)
-
+Download multiple models in one run:
 ```bash
-docker compose build
-docker compose run --rm downloader "https://sketchfab.com/3d-models/..."
-# or: ./docker-download.sh "URL"
+python main.py URL1 URL2 URL3
 ```
 
-See [Quick start (Docker)](#quick-start-docker).
+Specify custom output directory:
+```bash
+python main.py -o ./my_models "https://sketchfab.com/3d-models/..."
+```
+
+Download through a proxy:
+```bash
+python main.py --proxy "http://127.0.0.1:8080" "https://sketchfab.com/3d-models/..."
+```
+
+Keep raw decryption dumps:
+```bash
+python main.py --no-clean "https://sketchfab.com/3d-models/..."
+```
 
 ---
 
-## How it works
+## Requirements
 
-1. Opens the model’s **public** viewer page (like a browser).  
-2. Reads JSON describing mesh files (`.binz`, etc.).  
-3. Downloads those files from Sketchfab CDN.  
-4. Decrypts `.binz` via **WASM** (Node.js) using:  
-   - per-model key from public viewer JSON (`diter.b`)  
-   - **static key auto-extracted** from live Sketchfab JS each run (cached under `tools/wasm/static_key.txt`)  
-5. Converts to **glTF** (`osgconv` or built-in Python converter).  
-6. Tries textures via public API `/i/models/{uid}/textures`.  
-7. Writes everything under `downloads/` plus `info.json`.
+### Windows
+- **Node.js 18+**: Required for `.binz` WebAssembly decryption worker. Download from [nodejs.org](https://nodejs.org/).
+- **Python 3.10+**: Only required if running from source rather than the compiled `SketchfabUnlocker.exe`.
+
+### Linux
+```bash
+sudo apt update
+sudo apt install -y python3 python3-pip python3-venv nodejs wine64
+```
+Wine is used to run `osgconv.exe` for optimal glTF generation. If Wine is not present, a built-in pure Python converter serves as fallback.
+
+### macOS
+```bash
+brew install python node wine-stable
+```
+
+---
+
+## Where Files Are Saved
 
 ```text
-URL → viewer JSON → download .binz → decrypt → glTF + textures → downloads/
+downloads/
+└── Model_Name-01234567/
+    ├── Model_Name.gltf
+    ├── Model_Name.bin
+    ├── textures/
+    │   ├── texture_0.png
+    │   └── texture_1.png
+    └── info.json
 ```
+
+### Importing into Blender
+1. Open Blender.
+2. Select **File > Import > glTF 2.0 (.glb / .gltf)**.
+3. Select `Model_Name.gltf` from the output directory.
 
 ---
 
-## FAQ / troubleshooting
+## How It Works
 
-### `python` / `py` not found
+1. **Metadata Resolution**: Queries the public Sketchfab viewer page and parses the scene manifest.
+2. **Buffer Ingestion**: Downloads encrypted `.binz` chunks and scene definition files from the CDN.
+3. **WASM Decryption**: Node.js executes the WebAssembly decryptor using dynamic per-model keys combined with live static keys extracted from the viewer runtime.
+4. **glTF Conversion**: Converts OSGJS data to standard glTF 2.0 with geometry buffers.
+5. **Texture Retrieval**: Queries the public texture endpoint and downloads all available texture maps.
+6. **Clean Purge**: Cleans intermediate artifacts unless `--no-clean` is specified.
 
-- Reinstall Python with **Add to PATH** enabled.  
-- Or use the full path, e.g.:
-  ```bat
-  C:\Users\YOU\AppData\Local\Programs\Python\Python312\python.exe main.py --help
-  ```
+---
 
-### `WARNING: missing ... binzDecrypt.exe`
+## Troubleshooting & FAQ
 
-1. Clone the **full** repository (`tools/` must not be empty).  
-2. Or run:
-   ```bash
-   python setup_tools.py
-   ```
-3. If mirrors fail, copy `tools/binz` and `tools/OsgConv` from a complete project archive.
+### Node.js is missing
+Install Node.js 18 or newer from [nodejs.org](https://nodejs.org/) and ensure `node` is available in your system PATH. Node.js is required to execute the WASM decryption worker.
 
-### `Cannot run binzDecrypt.exe: wine not found` (Linux)
-
-Local Python:
-
+### Missing tools in `tools/`
+If the binaries in `tools/` are missing, run:
 ```bash
-sudo apt install wine64
-python main.py --check-tools
+python setup_tools.py
 ```
 
-Or use **Docker** (Wine is already in the image) — see [Quick start (Docker)](#quick-start-docker).
-
-### Docker: `permission denied` / `Cannot connect to the Docker daemon`
-
-- Is Docker running? (`sudo systemctl start docker` or Docker Desktop).  
-- On Linux, add your user to the `docker` group and **re-login**:
-  ```bash
-  sudo usermod -aG docker "$USER"
-  ```
-- Or use `sudo docker compose ...` temporarily.
-
-### Docker: `network is unreachable` / timeout to sketchfab.com
-
-- Test the host: `curl -I https://sketchfab.com`  
-- Try `network_mode: host` in `docker-compose.yml` (Linux).  
-- Corporate VPN/proxy: pass `--proxy` to `downloader`.
-
-### SSL / network failures
-
-- Check internet.  
-- Antivirus HTTPS scanning may break TLS — try disabling it briefly.  
-- Confirm `pip install -r requirements.txt` succeeded.
-
-### Model “does not download”
-
-1. Open the same link in a **private/incognito** window without login. If it fails, the model is not public.  
-2. Paid / exclusive models are not supported.  
-3. Sketchfab may have changed formats — delete `tools/binz` and `tools/OsgConv`, run `python setup_tools.py` again (or re-clone).
-
-### Slow decrypt / convert
-
-- First Wine start on Linux initializes a prefix (1–2 minutes is normal).  
-- Large models take longer to download.
-
-### Use as a library
-
-```python
-from main import download_one
-
-info = download_one("https://sketchfab.com/3d-models/...")
-print(info["path"], info["name"], info["author"])
-```
+### Model fails to download
+- Verify the model is publicly accessible in a web browser without being logged in.
+- Store models or private password-protected links cannot be downloaded.
+- Run `python main.py --check-tools` to ensure your local environment is correctly configured.
 
 ---
 
-## Project layout
+## Project Layout
 
-```text
-sketchfab-cli/
-├── main.py                 # CLI + download logic
-├── osgjs_convert.py        # Python fallback osgjs → glTF
-├── textures.py             # Texture download
-├── setup_tools.py          # Verify / re-fetch tools
-├── requirements.txt        # Python dependencies
-├── Dockerfile              # Image: Python + Wine + tools
-├── docker-compose.yml      # compose run downloader URL
-├── .dockerignore
-├── docker-download.sh      # Docker helper (Linux/macOS)
-├── docker-download.bat     # Docker helper (Windows)
-├── download.bat            # Local run on Windows (no Docker)
-├── download.sh             # Local run on Linux/macOS
-├── downloads/              # Output (not committed)
-├── tools/
-│   ├── wasm/               # decrypt_worker.mjs + decrypt.wasm (+ cached static_key.txt)
-│   ├── binz/               # legacy binzDecrypt.exe (optional fallback)
-│   └── OsgConv/            # osgconv.exe + DLLs
-├── LICENSE
-├── README.md               # English docs (default on GitHub)
-└── README.ru.md            # Russian docs
-```
+| File / Directory | Description |
+|---|---|
+| `gui.py` | Desktop graphical user interface |
+| `main.py` | Core engine and CLI interface |
+| `osgjs_convert.py` | Python OSGJS to glTF converter fallback |
+| `textures.py` | Texture fetching pipeline |
+| `setup_tools.py` | Tool downloader and verification |
+| `start.bat` | Windows launcher script |
+| `SketchfabUnlocker.bat` | Windows branded launcher script |
+| `SketchfabUnlocker.exe` | Standalone Windows executable |
+| `requirements.txt` | Python package dependencies |
+| `Dockerfile` | Container definition |
+| `docker-compose.yml` | Docker compose configuration |
+| `tools/` | WASM decryptor and conversion binaries |
+| `downloads/` | Default output directory |
+| `README.md` | English documentation |
+| `README.ru.md` | Russian documentation |
 
 ---
 
-## Publishing to GitHub
+## Legal Disclaimer
 
-```bash
-cd sketchfab-cli
-git init
-git add .
-git status   # downloads/ should not appear; tools/ should
-git commit -m "Initial commit: Sketchfab CLI downloader"
-git branch -M main
-git remote add origin https://github.com/seryi882/sketchfab-cli.git
-git push -u origin main
-```
-
-- **Do not commit** `downloads/` (user models) — listed in `.gitignore`.  
-- **Do commit** `tools/` (~40 MB): without it, decryption fails for new users.  
-- GitHub hard limit is 100 MB per file; `binzDecrypt.exe` is ~18 MB.
-
-### PR ideas
-
-- better Python converter  
-- tests / CI  
-- docs improvements  
+This tool is designed for educational and personal interoperability purposes, accessing public 3D viewer data in the same manner as a standard web browser.
+- Respect copyright and author licenses listed on model pages.
+- Do not use for commercial redistribution or bypassing paid assets.
+- Authors assume no liability for misuse of this software.
 
 ---
 
-## Legal disclaimer
+## License & Credits
 
-This tool is for **personal** access to **publicly** available viewer data, the same way a browser does.
-
-- Follow [Sketchfab Terms of Use](https://sketchfab.com/terms).  
-- Respect author licenses (CC, Editorial, etc.) shown on the model page.  
-- Do not use for mass piracy, resale, or bypassing paid downloads.  
-- Authors are **not liable** for how you use the software.
-
----
-
-## License & credits
-
-- CLI code: **MIT** (see `LICENSE`).  
-- `binzDecrypt` / `osgconv` tools originate from community Sketchfab-Ripper tooling  
-  and remain under their respective authors’ terms.  
-- Sketchfab is a trademark of its owners.
-
----
-
-### Cheat sheet
-
-**Docker (no host Python):**
-
-```bash
-docker compose build
-docker compose run --rm downloader "https://sketchfab.com/3d-models/....."
-# → see downloads/
-```
-
-**Local Python:**
-
-```bash
-python -m venv .venv && source .venv/bin/activate   # Windows: .venv\Scripts\activate
-pip install -r requirements.txt
-# Need Node.js 18+ (decrypt). Linux optional Wine for osgconv:
-#   sudo apt install nodejs wine64
-python main.py --check-tools
-python main.py "https://sketchfab.com/3d-models/....."
-# → see downloads/
-```
-
-### Auto-updating keys
-
-You normally **do not** need to edit keys by hand:
-
-| Material | Source | Updates how? |
-|---|---|---|
-| Per-model `diter.b` | Public model embed JSON | Always live |
-| Static 40-hex key | Viewer JS on static.sketchfab.com | Extracted every download; saved to `tools/wasm/static_key.txt` |
-| `decrypt.wasm` | Embedded in viewer JS | Shipped in repo; re-extracted if missing / on decrypt failure |
-
-If Sketchfab rotates crypto and a download fails, pull the latest release or re-run the same command once (wasm/key refresh is attempted automatically).
-
-If something fails, start with `python main.py --check-tools` (or Docker equivalent) and the [FAQ](#faq--troubleshooting).
+- Software authored by **wesiks** ([GitHub](https://github.com/wesiks)).
+- Licensed under the **MIT License**. See [LICENSE](LICENSE) for details.
+- Community credit to contributors in the 3D preservation ecosystem.
