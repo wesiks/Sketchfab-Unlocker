@@ -10,6 +10,7 @@ env/
 dist/
 build/
 *.spec
+SketchfabUnlocker.exe
 .pytest_cache/
 .mypy_cache/
 .superpowers/

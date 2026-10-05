@@ -35,7 +35,7 @@ from typing import Any, Callable, Optional
 # Paths
 # ---------------------------------------------------------------------------
 
-ROOT = Path(__file__).resolve().parent
+ROOT = Path(sys.executable).resolve().parent if getattr(sys, "frozen", False) else Path(__file__).resolve().parent
 DOWNLOADS = ROOT / "downloads"
 BINZ_DECRYPT = ROOT / "tools" / "binz" / "binzDecrypt.exe"
 OSGCONV = ROOT / "tools" / "OsgConv" / "osgconv.exe"
