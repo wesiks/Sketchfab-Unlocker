@@ -50,7 +50,7 @@ body {
   flex: 1;
   display: flex;
   overflow: hidden;
-  height: calc(100vh - 34px);
+  height: calc(100vh - 34px - 36px);
 }
 
 .sidebar {
@@ -547,6 +547,7 @@ body {
 }
 
 .panel-header {
+  flex-shrink: 0;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -589,6 +590,7 @@ body {
 }
 
 .panel-tabs {
+  flex-shrink: 0;
   display: flex;
   background: #111827;
   padding: 3px;
@@ -619,6 +621,7 @@ body {
 }
 
 .settings-section {
+  flex-shrink: 0;
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -928,4 +931,27 @@ input:checked + .slider:before {
   align-items: center;
   justify-content: space-between;
   margin-top: 4px;
+}
+
+.item-subtext, .item-title, .item-uid, #bottomStatusMsg, .model-card-title, .model-card-info {
+  user-select: text;
+  -webkit-user-select: text;
+  cursor: text;
+}
+
+.titlebar {
+  height: 36px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 8px 0 16px;
+  background: var(--bg-app);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.titlebar-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
 }

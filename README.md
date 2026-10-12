@@ -21,6 +21,12 @@
 
 ---
 
+## Official download with an API token (optional)
+
+For models whose author allows downloads, you can paste your own free Sketchfab API token in **Settings -> General**. Those models are then fetched through Sketchfab's official download (original textures, real materials). Models that aren't downloadable, or runs without a token, use the normal method. Get the token at <https://sketchfab.com/settings#password>; it is stored only in your local `settings.json`.
+
+---
+
 ## Table of Contents
 
 1. [Features](#features)

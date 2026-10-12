@@ -1,50 +1,11 @@
-const thumbSoldier = `<svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" rx="8" fill="#141B26"/><circle cx="32" cy="22" r="12" fill="#2A374A"/><rect x="25" y="18" width="14" height="6" rx="3" fill="#10B981" fill-opacity="0.8"/><path d="M18 42 C18 32 46 32 46 42 L48 58 L16 58 Z" fill="#1E293B"/><path d="M26 36 L38 36 L36 46 L28 46 Z" fill="#334155"/><line x1="28" y1="40" x2="36" y2="40" stroke="#475569" stroke-width="1.5"/></svg>`;
-const thumbCar = `<svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" rx="8" fill="#141B26"/><path d="M10 40 L18 28 L46 28 L54 40 L56 46 L8 46 Z" fill="#1E293B"/><path d="M19 30 L25 38 L42 38 L45 30 Z" fill="#0EA5E9" fill-opacity="0.8"/><rect x="8" y="44" width="48" height="6" rx="2" fill="#334155"/><circle cx="18" cy="46" r="6" fill="#0B0F19"/><circle cx="18" cy="46" r="3" fill="#64748B"/><circle cx="46" cy="46" r="6" fill="#0B0F19"/><circle cx="46" cy="46" r="3" fill="#64748B"/><line x1="50" y1="42" x2="54" y2="42" stroke="#38BDF8" stroke-width="2"/></svg>`;
-const thumbBuilding = `<svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" rx="8" fill="#141B26"/><polygon points="12 28 32 14 52 28" fill="#475569"/><rect x="14" y="28" width="36" height="4" fill="#334155"/><rect x="16" y="32" width="4" height="18" fill="#64748B"/><rect x="24" y="32" width="4" height="18" fill="#64748B"/><rect x="36" y="32" width="4" height="18" fill="#64748B"/><rect x="44" y="32" width="4" height="18" fill="#64748B"/><rect x="10" y="50" width="44" height="6" fill="#334155"/></svg>`;
 const defaultModelThumb = `<svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" rx="8" fill="#141B26"/><path d="M32 14 L50 24 L50 44 L32 54 L14 44 L14 24 Z" stroke="#3B82F6" stroke-width="2"/><line x1="32" y1="14" x2="32" y2="34" stroke="#3B82F6" stroke-width="2"/><line x1="50" y1="24" x2="32" y2="34" stroke="#3B82F6" stroke-width="2"/><line x1="14" y1="24" x2="32" y2="34" stroke="#3B82F6" stroke-width="2"/></svg>`;
 
-let queueState = [
-  {
-    id: "sample_1",
-    uid: "8f31e7c4a6d2e9b3f1c7e5a9d4b2c6e8",
-    name: "Model_8f31e7...",
-    url: "https://sketchfab.com/3d-models/model-8f31e7c4a6d2e9b3f1c7e5a9d4b2c6e8",
-    status: "done",
-    statusText: "Готово",
-    subText: "2.4 МБ · 3 файла",
-    percent: 100,
-    thumbSvg: thumbSoldier,
-    path: ""
-  },
-  {
-    id: "sample_2",
-    uid: "12ac9f3e7b6c4d8a2f1e9c3d7b5a6e8f",
-    name: "Model_12ac9f...",
-    url: "https://sketchfab.com/3d-models/model-12ac9f3e7b6c4d8a2f1e9c3d7b5a6e8f",
-    status: "downloading",
-    statusText: "Загрузка... 67%",
-    subText: "15.2 МБ / 22.8 МБ",
-    percent: 67,
-    thumbSvg: thumbCar,
-    path: ""
-  },
-  {
-    id: "sample_3",
-    uid: "91de4c7b8f1a3d6e9c2b5f7a4d8e1c3",
-    name: "Model_91de4c...",
-    url: "https://sketchfab.com/3d-models/model-91de4c7b8f1a3d6e9c2b5f7a4d8e1c3",
-    status: "queued",
-    statusText: "В очереди",
-    subText: "",
-    percent: 0,
-    thumbSvg: thumbBuilding,
-    path: ""
-  }
-];
+let queueState = [];
 
 let isDownloadingQueue = false;
 
 document.addEventListener("DOMContentLoaded", () => {
+  setupLanguage();
   setupNavigation();
   setupSettingsSync();
   setupWindowControls();
@@ -55,29 +16,97 @@ document.addEventListener("DOMContentLoaded", () => {
   initBackend();
 });
 
+function applyInitialState(state) {
+  if (!state) return;
+  if (state.default_output_dir) setOutputDirectory(state.default_output_dir);
+  if (state.settings) applySettings(state.settings);
+  if (state.language) {
+    document.getElementById("selLanguage").value = state.language;
+    setLanguage(state.language, false);
+  }
+}
+
 function initBackend() {
   if (window.pywebview && window.pywebview.api) {
-    window.pywebview.api.get_initial_state().then(state => {
-      if (state && state.default_output_dir) {
-        setOutputDirectory(state.default_output_dir);
-      }
-    }).catch(() => {});
+    window.pywebview.api.get_initial_state().then(applyInitialState).catch(() => {});
   } else {
     window.addEventListener("pywebviewready", () => {
       if (window.pywebview && window.pywebview.api) {
-        window.pywebview.api.get_initial_state().then(state => {
-          if (state && state.default_output_dir) {
-            setOutputDirectory(state.default_output_dir);
-          }
-        }).catch(() => {});
+        window.pywebview.api.get_initial_state().then(applyInitialState).catch(() => {});
       }
     });
   }
 }
 
+const SETTING_FIELDS = {
+  savePath: ["savePathInput", "value"],
+  clean: ["chkCleanOutput", "checked"],
+  textures: ["chkDownloadTextures", "checked"],
+  autoOpen: ["chkAutoOpen", "checked"],
+  materials: ["chkFormatMaterials", "checked"],
+  format: ["selFormat", "value"],
+  converter: ["selConverter", "value"],
+  proxyEnabled: ["chkProxyEnabled", "checked"],
+  proxyType: ["selProxyType", "value"],
+  proxyHost: ["inpProxyHost", "value"],
+  proxyPort: ["inpProxyPort", "value"],
+  proxyUser: ["inpProxyUser", "value"],
+  apiToken: ["inpApiToken", "value"],
+};
+
+function collectSettings() {
+  const out = {};
+  for (const [k, [id, prop]] of Object.entries(SETTING_FIELDS)) out[k] = document.getElementById(id)[prop];
+  return out;
+}
+
+function applySettings(cfg) {
+  for (const [k, [id, prop]] of Object.entries(SETTING_FIELDS)) {
+    if (cfg[k] === undefined || cfg[k] === null) continue;
+    if (k === "savePath") { setOutputDirectory(cfg[k]); continue; }
+    document.getElementById(id)[prop] = cfg[k];
+  }
+  syncLinkedControls();
+}
+
+function syncLinkedControls() {
+  document.getElementById("chkSettingsClean").checked = document.getElementById("chkCleanOutput").checked;
+  document.getElementById("chkSettingsAutoOpen").checked = document.getElementById("chkAutoOpen").checked;
+  document.getElementById("chkFormatTextures").checked = document.getElementById("chkDownloadTextures").checked;
+}
+
+let saveTimer = null;
+function scheduleSaveSettings() {
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(() => {
+    if (window.pywebview && window.pywebview.api) window.pywebview.api.save_settings(collectSettings());
+  }, 400);
+}
+
+function setupLanguage() {
+  const sel = document.getElementById("selLanguage");
+  sel.value = currentLang;
+  sel.addEventListener("change", () => setLanguage(sel.value, true));
+  applyI18n();
+}
+
+function onLanguageChanged() {
+  renderQueue();
+  setStatus(lastStatus.key, lastStatus.vars);
+  document.getElementById("btnStartQueueText").textContent = t(isDownloadingQueue ? "download.stop" : "download.start");
+  if (document.getElementById("pageModels").classList.contains("active")) loadMyModels();
+}
+
 function setOutputDirectory(dirPath) {
   document.getElementById("savePathInput").value = dirPath;
   document.getElementById("settingsPathInput").value = dirPath;
+}
+
+function showSettingsSection(name) {
+  const map = { general: "secGeneral", network: "secNetwork", processing: "secProcessing" };
+  for (const [key, id] of Object.entries(map)) {
+    document.getElementById(id).style.display = key === name ? "flex" : "none";
+  }
 }
 
 function setupNavigation() {
@@ -107,22 +136,13 @@ function setupNavigation() {
     settingsPanel.classList.toggle("hidden");
   });
 
+  showSettingsSection("general");
   const panelTabs = document.querySelectorAll(".panel-tab");
   panelTabs.forEach(tab => {
     tab.addEventListener("click", () => {
       panelTabs.forEach(t => t.classList.remove("active"));
       tab.classList.add("active");
-      const target = tab.getAttribute("data-tab");
-      const secGen = document.getElementById("secGeneral");
-      const secNet = document.getElementById("secNetwork");
-      const secProc = document.getElementById("secProcessing");
-      if (target === "general") {
-        secGen.scrollIntoView({ behavior: "smooth", block: "start" });
-      } else if (target === "network") {
-        secNet.scrollIntoView({ behavior: "smooth", block: "start" });
-      } else if (target === "processing") {
-        secProc.scrollIntoView({ behavior: "smooth", block: "start" });
-      }
+      showSettingsSection(tab.getAttribute("data-tab"));
     });
   });
 
@@ -149,6 +169,17 @@ function setupSettingsSync() {
   chkAuto1.addEventListener("change", () => { chkAuto2.checked = chkAuto1.checked; });
   chkAuto2.addEventListener("change", () => { chkAuto1.checked = chkAuto2.checked; });
 
+  const chkTex1 = document.getElementById("chkDownloadTextures");
+  const chkTex2 = document.getElementById("chkFormatTextures");
+  chkTex1.addEventListener("change", () => { chkTex2.checked = chkTex1.checked; });
+  chkTex2.addEventListener("change", () => { chkTex1.checked = chkTex2.checked; });
+
+  for (const [id] of Object.values(SETTING_FIELDS)) {
+    document.getElementById(id).addEventListener("change", scheduleSaveSettings);
+  }
+  ["chkSettingsClean", "chkSettingsAutoOpen", "chkFormatTextures"].forEach(id =>
+    document.getElementById(id).addEventListener("change", scheduleSaveSettings));
+
   const btnBrowse1 = document.getElementById("btnBrowseSaveDir");
   const btnBrowse2 = document.getElementById("btnSettingsBrowseDir");
   const handleBrowse = () => {
@@ -156,6 +187,7 @@ function setupSettingsSync() {
       window.pywebview.api.select_folder(saveInput.value).then(res => {
         if (res) {
           setOutputDirectory(res);
+          scheduleSaveSettings();
         }
       });
     }
@@ -175,6 +207,14 @@ function setupSettingsSync() {
     passInp.type = passInp.type === "password" ? "text" : "password";
   });
 
+  const tokenInp = document.getElementById("inpApiToken");
+  document.getElementById("btnToggleTokenEye").addEventListener("click", () => {
+    tokenInp.type = tokenInp.type === "password" ? "text" : "password";
+  });
+  document.getElementById("btnTokenHelp").addEventListener("click", () => {
+    if (window.pywebview && window.pywebview.api) window.pywebview.api.open_url("https://sketchfab.com/settings#password");
+  });
+
   document.getElementById("btnTestProxy").addEventListener("click", () => {
     const proxyData = {
       enabled: document.getElementById("chkProxyEnabled").checked,
@@ -185,14 +225,14 @@ function setupSettingsSync() {
       pass: document.getElementById("inpProxyPass").value.trim()
     };
     if (window.pywebview && window.pywebview.api) {
-      setStatus("Проверка прокси...");
+      setStatus("status.proxy_testing");
       window.pywebview.api.test_proxy(proxyData).then(res => {
         if (res && res.success) {
-          setStatus("Прокси работает корректно");
-          alert("Соединение с прокси успешно установлено!");
+          setStatus("status.proxy_ok");
+          alert(t("status.proxy_ok_alert"));
         } else {
-          setStatus("Ошибка подключения к прокси");
-          alert("Не удалось подключиться к прокси: " + (res ? res.error : "Ошибка"));
+          setStatus("status.proxy_fail");
+          alert(t("status.proxy_fail_alert") + (res ? (res.errorKey ? t(res.errorKey) : res.error) : t("status.error")));
         }
       });
     }
@@ -206,6 +246,20 @@ function setupWindowControls() {
       if (window.pywebview && window.pywebview.api) {
         window.pywebview.api.minimize_window();
       }
+    });
+  }
+  const btnMax = document.getElementById("btnMaximizeApp");
+  if (btnMax) {
+    btnMax.addEventListener("click", () => {
+      if (window.pywebview && window.pywebview.api) {
+        window.pywebview.api.maximize_window();
+      }
+    });
+  }
+  const titlebar = document.querySelector(".titlebar");
+  if (titlebar) {
+    titlebar.addEventListener("dblclick", (e) => {
+      if (!e.target.closest("button") && btnMax) btnMax.click();
     });
   }
   const btnClose = document.getElementById("btnCloseApp");
@@ -280,6 +334,9 @@ function setupModalActions() {
   });
 
   const closeModal = () => modal.classList.remove("active");
+  modal.addEventListener("click", (e) => { if (e.target === modal) closeModal(); });
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeModal(); });
+  document.getElementById("btnClearDone").addEventListener("click", clearCompleted);
   btnClose.addEventListener("click", closeModal);
   btnCancel.addEventListener("click", closeModal);
 
@@ -297,6 +354,10 @@ function extractUid(raw) {
 
 function addInputToQueue(inputStr) {
   const uid = extractUid(inputStr);
+  if (uid && queueState.some(i => i.uid === uid && i.status !== "error")) {
+    setStatus("queue.duplicate");
+    return;
+  }
   const fallbackUid = uid || Math.random().toString(16).substring(2, 10).padEnd(32, "0");
   const shortUid = fallbackUid.substring(0, 8);
   const newItem = {
@@ -305,8 +366,9 @@ function addInputToQueue(inputStr) {
     name: "Model_" + shortUid + "...",
     url: inputStr.startsWith("http") ? inputStr : ("https://sketchfab.com/3d-models/" + fallbackUid),
     status: "queued",
-    statusText: "В очереди",
+    statusKey: "status.queued",
     subText: "",
+    subKey: null,
     percent: 0,
     thumbSvg: defaultModelThumb,
     path: ""
@@ -331,25 +393,37 @@ function renderQueue() {
     el.className = "queue-item";
     el.id = "queue_dom_" + item.id;
 
+    const statusLabel = item.statusKey ? t(item.statusKey, item.statusParams) : (item.statusText || "");
+    const subLabel = item.subKey ? t(item.subKey, item.subParams)
+      : (item.subText || "").replace("{files}", t("models.files"));
+
     let statusHtml = "";
     if (item.status === "done") {
       statusHtml = `
         <div class="item-status-text green">
           <span class="badge-dot green"></span>
-          <span>${item.statusText || "Готово"}</span>
+          <span>${statusLabel || t("status.done")}</span>
         </div>
-        <div class="item-subtext">${item.subText || "2.4 МБ · 3 файла"}</div>
+        <div class="item-subtext">${subLabel}</div>
       `;
     } else if (item.status === "downloading") {
       statusHtml = `
         <div class="item-status-text blue">
           <span class="badge-dot blue"></span>
-          <span>${item.statusText || ("Загрузка... " + (item.percent || 0) + "%")}</span>
+          <span>${statusLabel || t("status.downloading_pct", { pct: item.percent || 0 })}</span>
         </div>
         <div class="progress-track">
           <div class="progress-fill" style="width: ${item.percent || 0}%;"></div>
         </div>
-        <div class="item-subtext">${item.subText || ""}</div>
+        <div class="item-subtext">${subLabel}</div>
+      `;
+    } else if (item.status === "error") {
+      statusHtml = `
+        <div class="item-status-text" style="color: #EF4444;">
+          <span class="badge-dot" style="background: #EF4444;"></span>
+          <span>${statusLabel || t("status.error")}</span>
+        </div>
+        <div class="item-subtext" title="${escapeHtml(subLabel)}">${escapeHtml(subLabel)}</div>
       `;
     } else {
       statusHtml = `
@@ -358,7 +432,7 @@ function renderQueue() {
             <circle cx="12" cy="12" r="10"></circle>
             <polyline points="12 6 12 12 16 14"></polyline>
           </svg>
-          <span>В очереди</span>
+          <span>${t("status.queued")}</span>
         </div>
       `;
     }
@@ -366,12 +440,12 @@ function renderQueue() {
     let actionsHtml = "";
     if (item.status === "done") {
       actionsHtml = `
-        <button class="icon-btn btn-open-item" title="Открыть папку">
+        <button class="icon-btn btn-open-item" title="${t("download.open_folder")}">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
           </svg>
         </button>
-        <button class="icon-btn btn-menu" title="Опции">
+        <button class="icon-btn btn-menu" title="${t('queue.options')}">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
             <circle cx="12" cy="5" r="2"></circle>
             <circle cx="12" cy="12" r="2"></circle>
@@ -381,7 +455,7 @@ function renderQueue() {
       `;
     } else if (item.status === "downloading") {
       actionsHtml = `
-        <button class="icon-btn btn-remove" title="Отмена">
+        <button class="icon-btn btn-remove" title="${t('queue.cancel')}">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <line x1="18" y1="6" x2="6" y2="18"></line>
             <line x1="6" y1="6" x2="18" y2="18"></line>
@@ -390,13 +464,13 @@ function renderQueue() {
       `;
     } else {
       actionsHtml = `
-        <button class="icon-btn btn-remove" title="Удалить">
+        <button class="icon-btn btn-remove" title="${t('queue.remove')}">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <line x1="18" y1="6" x2="6" y2="18"></line>
             <line x1="6" y1="6" x2="18" y2="18"></line>
           </svg>
         </button>
-        <button class="icon-btn btn-menu" title="Опции">
+        <button class="icon-btn btn-menu" title="${t('queue.options')}">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
             <circle cx="12" cy="5" r="2"></circle>
             <circle cx="12" cy="12" r="2"></circle>
@@ -438,11 +512,91 @@ function renderQueue() {
 
     const btnRemove = el.querySelector(".btn-remove");
     if (btnRemove) {
-      btnRemove.addEventListener("click", () => removeQueueItem(item.id));
+      btnRemove.addEventListener("click", () => {
+        if (item.status === "downloading") cancelQueueDownload();
+        else removeQueueItem(item.id);
+      });
+    }
+
+    const btnMenu = el.querySelector(".btn-menu");
+    if (btnMenu) {
+      btnMenu.addEventListener("click", (e) => { e.stopPropagation(); showItemMenu(btnMenu, item); });
     }
 
     container.appendChild(el);
   });
+}
+
+function copyText(text) {
+  // navigator.clipboard is rejected by Qt WebEngine; execCommand works from a user gesture
+  const fallback = () => {
+    const ta = document.createElement("textarea");
+    ta.value = text;
+    ta.style.cssText = "position:fixed;opacity:0;";
+    document.body.appendChild(ta);
+    ta.select();
+    let ok = false;
+    try { ok = document.execCommand("copy"); } catch (e) { ok = false; }
+    ta.remove();
+    if (!ok && window.pywebview && window.pywebview.api) window.pywebview.api.copy_to_clipboard(text);
+    return ok;
+  };
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    return navigator.clipboard.writeText(text).catch(fallback);
+  }
+  fallback();
+  return Promise.resolve();
+}
+
+function escapeHtml(str) {
+  return String(str).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+}
+
+function closeItemMenu() {
+  const old = document.getElementById("itemMenu");
+  if (old) old.remove();
+}
+
+function showItemMenu(anchor, item) {
+  closeItemMenu();
+  const menu = document.createElement("div");
+  menu.id = "itemMenu";
+  menu.style.cssText = "position:fixed;z-index:1000;background:var(--card-bg,#151922);border:1px solid var(--border-color,#252D3D);border-radius:8px;padding:4px;min-width:170px;box-shadow:0 8px 24px rgba(0,0,0,.45);";
+  const entries = [[t("queue.copy_uid"), () => {
+    copyText(item.uid).then(() => setStatus("status.copied"));
+  }], [t("queue.open_web"), () => {
+    if (window.pywebview && window.pywebview.api) window.pywebview.api.open_url(item.url);
+  }]];
+  if (item.status === "error") {
+    entries.push([t("queue.copy_error"), () => {
+      copyText(item.errorDetail || item.subText || "").then(() => setStatus("status.copied_text"));
+    }]);
+    entries.push([t("queue.retry"), () => {
+      item.status = "queued"; item.statusKey = "status.queued"; item.subKey = null; item.subText = "";
+      renderQueue(); updateCounters();
+    }]);
+  }
+  entries.forEach(([label, fn]) => {
+    const b = document.createElement("div");
+    b.textContent = label;
+    b.style.cssText = "padding:8px 12px;font-size:12px;cursor:pointer;border-radius:6px;color:var(--text-main,#F3F4F6);";
+    b.addEventListener("mouseenter", () => { b.style.background = "rgba(255,255,255,.07)"; });
+    b.addEventListener("mouseleave", () => { b.style.background = ""; });
+    b.addEventListener("click", () => { closeItemMenu(); fn(); });
+    menu.appendChild(b);
+  });
+  document.body.appendChild(menu);
+  const r = anchor.getBoundingClientRect();
+  menu.style.top = Math.min(r.bottom + 4, window.innerHeight - menu.offsetHeight - 8) + "px";
+  menu.style.left = Math.max(8, r.right - menu.offsetWidth) + "px";
+}
+
+document.addEventListener("click", closeItemMenu);
+
+function clearCompleted() {
+  queueState = queueState.filter(i => i.status !== "done");
+  renderQueue();
+  updateCounters();
 }
 
 function updateCounters() {
@@ -459,21 +613,26 @@ function updateCounters() {
   document.getElementById("barQueued").innerText = queued;
 }
 
-function setStatus(msg) {
-  const label = document.getElementById("bottomStatusMsg");
-  label.innerText = msg;
+let lastStatus = { key: "status.ready", vars: undefined };
+
+function setStatus(key, vars) {
+  lastStatus = { key, vars };
+  document.getElementById("bottomStatusMsg").textContent = t(key, vars);
 }
 
 function startQueueDownload() {
+  queueState.filter(i => i.status === "error").forEach(i => {
+    i.status = "queued"; i.statusKey = "status.queued"; i.subKey = null; i.subText = "";
+  });
   const pendingItems = queueState.filter(i => i.status === "queued");
   if (pendingItems.length === 0) {
-    setStatus("Все модели уже загружены или очередь пуста");
+    setStatus("status.queue_empty");
     return;
   }
 
   isDownloadingQueue = true;
-  document.getElementById("btnStartQueueText").innerText = "Остановить загрузку";
-  setStatus("Загрузка очереди...");
+  document.getElementById("btnStartQueueText").textContent = t("download.stop");
+  setStatus("status.queue_downloading");
 
   const savePath = document.getElementById("savePathInput").value;
   const cleanOutput = document.getElementById("chkCleanOutput").checked;
@@ -499,18 +658,27 @@ function startQueueDownload() {
     savePath: savePath,
     cleanOutput: cleanOutput,
     proxy: proxyStr,
-    autoOpen: autoOpen
+    autoOpen: autoOpen,
+    downloadTextures: document.getElementById("chkDownloadTextures").checked,
+    keepMaterials: document.getElementById("chkFormatMaterials").checked,
+    apiToken: document.getElementById("inpApiToken").value.trim(),
+    format: document.getElementById("selFormat").value,
+    converter: document.getElementById("selConverter").value
   };
 
+  renderQueue();
   if (window.pywebview && window.pywebview.api) {
     window.pywebview.api.start_queue(payload);
+  } else {
+    isDownloadingQueue = false;
+    document.getElementById("btnStartQueueText").textContent = t("download.start");
   }
 }
 
 function cancelQueueDownload() {
   isDownloadingQueue = false;
-  document.getElementById("btnStartQueueText").innerText = "Начать загрузку";
-  setStatus("Остановка загрузки...");
+  document.getElementById("btnStartQueueText").textContent = t("download.start");
+  setStatus("status.queue_stopping");
   if (window.pywebview && window.pywebview.api) {
     window.pywebview.api.cancel_queue();
   }
@@ -521,9 +689,21 @@ window.onQueueProgress = function(data) {
   const item = queueState.find(i => i.id === data.id || i.uid === data.uid);
   if (item) {
     item.status = data.status || item.status;
-    item.statusText = data.statusText || item.statusText;
-    item.subText = data.subText !== undefined ? data.subText : item.subText;
+    if (data.statusKey) {
+      item.statusKey = data.statusKey;
+      item.statusParams = data.statusParams;
+      item.statusText = "";
+    }
+    if (data.subKey) {
+      item.subKey = data.subKey;
+      item.subParams = data.subParams;
+      item.subText = "";
+    } else if (data.subText !== undefined) {
+      item.subKey = null;
+      item.subText = data.subText;
+    }
     item.percent = data.percent !== undefined ? data.percent : item.percent;
+    if (data.errorDetail) item.errorDetail = data.errorDetail;
     if (data.name) item.name = data.name;
     if (data.path) item.path = data.path;
   }
@@ -533,8 +713,9 @@ window.onQueueProgress = function(data) {
 
 window.onQueueFinish = function(result) {
   isDownloadingQueue = false;
-  document.getElementById("btnStartQueueText").innerText = "Начать загрузку";
-  setStatus(result && result.message ? result.message : "Готов к работе");
+  document.getElementById("btnStartQueueText").textContent = t("download.start");
+  if (result && result.messageKey) setStatus(result.messageKey, result.messageParams);
+  else setStatus("status.ready");
   renderQueue();
   updateCounters();
 };
@@ -542,13 +723,13 @@ window.onQueueFinish = function(result) {
 function loadMyModels() {
   const grid = document.getElementById("modelsGrid");
   const savePath = document.getElementById("savePathInput").value;
-  grid.innerHTML = "<div style='color: var(--text-muted); font-size: 13px; padding: 20px;'>Загрузка сохраненных моделей...</div>";
+  grid.innerHTML = `<div style='color: var(--text-muted); font-size: 13px; padding: 20px;'>${t('models.loading')}</div>`;
 
   if (window.pywebview && window.pywebview.api) {
     window.pywebview.api.get_my_models(savePath).then(models => {
       grid.innerHTML = "";
       if (!models || models.length === 0) {
-        grid.innerHTML = "<div style='color: var(--text-muted); font-size: 13px; padding: 20px;'>Папка пуста. Скачанные 3D-модели появятся здесь.</div>";
+        grid.innerHTML = `<div style='color: var(--text-muted); font-size: 13px; padding: 20px;'>${t('models.empty')}</div>`;
         return;
       }
       models.forEach(m => {
@@ -563,14 +744,14 @@ function loadMyModels() {
             </svg>
           </div>
           <span class="model-card-title" title="${m.name}">${m.name}</span>
-          <span class="model-card-info">${m.size} · ${m.files} файлов</span>
+          <span class="model-card-info">${m.size} · ${m.files} ${t("models.files")}</span>
           <div class="model-card-actions">
-            <button class="icon-btn btn-open-model-dir" title="Открыть папку">
+            <button class="icon-btn btn-open-model-dir" title="${t('models.open_folder')}">
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
               </svg>
             </button>
-            <button class="btn-secondary btn-view-file" style="padding: 6px 12px; font-size: 11px;">Открыть 3D</button>
+            <button class="btn-secondary btn-view-file" style="padding: 6px 12px; font-size: 11px;">${t("models.open_3d")}</button>
           </div>
         `;
         card.querySelector(".btn-open-model-dir").addEventListener("click", () => {

@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="es">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -7,6 +7,27 @@
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
+  <div class="titlebar drag-handle">
+    <span class="titlebar-title">Sketchfab Unlocker</span>
+    <div class="panel-controls-group no-drag">
+      <button class="panel-ctrl-btn" id="btnMinimizeApp" title="Minimizar" data-i18n-title="settings.minimize">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <line x1="4" y1="12" x2="20" y2="12"></line>
+        </svg>
+      </button>
+      <button class="panel-ctrl-btn" id="btnMaximizeApp" title="Maximizar" data-i18n-title="settings.maximize">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <rect x="4" y="4" width="16" height="16" rx="1"></rect>
+        </svg>
+      </button>
+      <button class="panel-ctrl-btn btn-close-app" id="btnCloseApp" title="Cerrar" data-i18n-title="settings.close">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
+    </div>
+  </div>
   <div class="app-container">
     <div class="sidebar drag-handle">
       <div class="nav-group no-drag">
@@ -16,20 +37,20 @@
             <polyline points="7 10 12 15 17 10"></polyline>
             <line x1="12" y1="15" x2="12" y2="3"></line>
           </svg>
-          <span>Загрузка</span>
+          <span data-i18n="nav.download">Descarga</span>
         </div>
         <div class="nav-item" id="tabNavModels" data-tab="models">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
           </svg>
-          <span>Мои модели</span>
+          <span data-i18n="nav.models">Mis modelos</span>
         </div>
         <div class="nav-item" id="tabNavSettings" data-tab="settings">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <circle cx="12" cy="12" r="3"></circle>
             <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
           </svg>
-          <span>Настройки</span>
+          <span data-i18n="nav.settings">Ajustes</span>
         </div>
       </div>
       <div class="sidebar-footer">
@@ -41,16 +62,16 @@
       <div class="view-page active" id="pageDownload">
         <div class="card">
           <div class="card-header drag-handle">
-            <span class="card-title no-drag">Добавить модель</span>
+            <span class="card-title no-drag" data-i18n="download.add_model">Añadir modelo</span>
           </div>
           <div class="input-with-button">
-            <input type="text" id="urlInput" class="dark-input" placeholder="Вставьте ссылку или 32-значный UID..." spellcheck="false" autocomplete="off">
+            <input type="text" id="urlInput" class="dark-input" placeholder="Pega un enlace o un UID de 32 caracteres..." data-i18n-placeholder="download.url_placeholder" spellcheck="false" autocomplete="off">
             <button class="btn-paste" id="btnPasteClip">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path>
                 <rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect>
               </svg>
-              <span>Вставить</span>
+              <span data-i18n="download.paste">Pegar</span>
             </button>
           </div>
           <div class="actions-row">
@@ -60,7 +81,7 @@
                   <line x1="12" y1="5" x2="12" y2="19"></line>
                   <line x1="5" y1="12" x2="19" y2="12"></line>
                 </svg>
-                <span>Добавить</span>
+                <span data-i18n="download.add">Añadir</span>
               </button>
               <button class="btn-secondary" id="btnOpenBatch">
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -68,28 +89,29 @@
                   <polyline points="7 10 12 15 17 10"></polyline>
                   <line x1="12" y1="15" x2="12" y2="3"></line>
                 </svg>
-                <span>Добавить несколько</span>
+                <span data-i18n="download.add_many">Añadir varios</span>
               </button>
             </div>
-            <span class="note-text">Поддерживаются ссылки и 32-значные UID</span>
+            <span class="note-text" data-i18n="download.supported">Se admiten enlaces y UID de 32 caracteres</span>
           </div>
         </div>
 
         <div class="card" style="flex: 1; min-height: 220px;">
           <div class="card-header drag-handle">
-            <span class="card-title no-drag">Очередь загрузок</span>
+            <span class="card-title no-drag" data-i18n="download.queue_title">Cola de descargas</span>
             <div class="counters-group no-drag">
+              <button class="btn-secondary" id="btnClearDone" style="padding: 4px 10px; font-size: 11px;" data-i18n="queue.clear_done">Limpiar completados</button>
               <div class="counter-badge">
                 <span class="badge-dot green"></span>
-                <span>Готово: <strong id="countDone">1</strong></span>
+                <span><span data-i18n="status.done">Listo</span>: <strong id="countDone">0</strong></span>
               </div>
               <div class="counter-badge">
                 <span class="badge-dot blue"></span>
-                <span>Загружается: <strong id="countActive">1</strong></span>
+                <span><span data-i18n="status.downloading">Descargando</span>: <strong id="countActive">0</strong></span>
               </div>
               <div class="counter-badge">
                 <span class="badge-dot gray"></span>
-                <span>В очереди: <strong id="countQueued">1</strong></span>
+                <span><span data-i18n="status.queued">En cola</span>: <strong id="countQueued">0</strong></span>
               </div>
             </div>
           </div>
@@ -98,16 +120,16 @@
 
         <div class="card">
           <div class="card-header drag-handle">
-            <span class="card-title no-drag">Папка сохранения</span>
+            <span class="card-title no-drag" data-i18n="download.save_folder">Carpeta de guardado</span>
           </div>
           <div class="input-with-button">
-            <input type="text" id="savePathInput" class="dark-input" value="D:\Models" readonly>
-            <button class="icon-btn" id="btnOpenSaveDir" title="Открыть папку">
+            <input type="text" id="savePathInput" class="dark-input" value="" readonly>
+            <button class="icon-btn" id="btnOpenSaveDir" title="Abrir carpeta" data-i18n-title="download.open_folder">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
               </svg>
             </button>
-            <button class="icon-btn" id="btnBrowseSaveDir" title="Выбрать папку">
+            <button class="icon-btn" id="btnBrowseSaveDir" title="Elegir carpeta" data-i18n-title="download.choose_folder">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <circle cx="12" cy="12" r="1"></circle>
                 <circle cx="19" cy="12" r="1"></circle>
@@ -119,22 +141,22 @@
             <div class="checkboxes-group">
               <label class="custom-checkbox">
                 <input type="checkbox" id="chkCleanOutput" checked>
-                <span>Clean Output <span class="checkbox-subtext">(удалять служебные файлы)</span></span>
+                <span>Clean Output <span class="checkbox-subtext" data-i18n="download.clean_output_sub">(eliminar archivos temporales)</span></span>
               </label>
               <label class="custom-checkbox">
                 <input type="checkbox" id="chkDownloadTextures" checked>
-                <span>Скачать текстуры <span class="checkbox-subtext">(Diffuse, Normal и др.)</span></span>
+                <span><span data-i18n="download.textures">Descargar texturas</span> <span class="checkbox-subtext" data-i18n="download.textures_sub">(Diffuse, Normal, etc.)</span></span>
               </label>
               <label class="custom-checkbox">
                 <input type="checkbox" id="chkAutoOpen">
-                <span>Открывать папку после загрузки</span>
+                <span data-i18n="download.auto_open">Abrir la carpeta tras la descarga</span>
               </label>
             </div>
             <button class="btn-start-download" id="btnStartQueue">
               <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor">
                 <polygon points="5 3 19 12 5 21 5 3"></polygon>
               </svg>
-              <span id="btnStartQueueText">Начать загрузку</span>
+              <span id="btnStartQueueText" data-i18n="download.start">Iniciar descarga</span>
             </button>
           </div>
         </div>
@@ -143,7 +165,7 @@
       <div class="view-page" id="pageModels">
         <div class="card" style="flex: 1;">
           <div class="card-header drag-handle">
-            <span class="card-title no-drag">Сохраненные модели</span>
+            <span class="card-title no-drag" data-i18n="models.title">Modelos guardados</span>
             <div class="action-buttons-left no-drag">
               <button class="btn-secondary" id="btnRefreshModels">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -151,13 +173,13 @@
                   <path d="M1 20v-6h6"></path>
                   <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
                 </svg>
-                <span>Обновить</span>
+                <span data-i18n="models.refresh">Actualizar</span>
               </button>
               <button class="btn-secondary" id="btnOpenSavedFolder">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                   <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
                 </svg>
-                <span>Открыть папку</span>
+                <span data-i18n="models.open_folder">Abrir carpeta</span>
               </button>
             </div>
           </div>
@@ -168,33 +190,38 @@
 
     <div class="right-panel" id="settingsPanel">
       <div class="panel-header drag-handle">
-        <span class="panel-title no-drag">Настройки</span>
-        <div class="panel-controls-group no-drag">
-          <button class="panel-ctrl-btn" id="btnMinimizeApp" title="Свернуть">
-            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-              <line x1="4" y1="12" x2="20" y2="12"></line>
-            </svg>
-          </button>
-          <button class="panel-ctrl-btn btn-close-app" id="btnCloseApp" title="Закрыть">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-              <line x1="18" y1="6" x2="6" y2="18"></line>
-              <line x1="6" y1="6" x2="18" y2="18"></line>
-            </svg>
-          </button>
-        </div>
+        <span class="panel-title no-drag" data-i18n="settings.title">Ajustes</span>
       </div>
 
       <div class="panel-tabs">
-        <div class="panel-tab active" data-tab="general">Общие</div>
-        <div class="panel-tab" data-tab="network">Сеть</div>
-        <div class="panel-tab" data-tab="processing">Обработка</div>
+        <div class="panel-tab active" data-tab="general" data-i18n="settings.tab_general">General</div>
+        <div class="panel-tab" data-tab="network" data-i18n="settings.tab_network">Red</div>
+        <div class="panel-tab" data-tab="processing" data-i18n="settings.tab_processing">Procesamiento</div>
       </div>
 
       <div class="settings-section" id="secGeneral">
-        <span class="section-label">Папка вывода</span>
+        <span class="section-label" data-i18n="settings.language">Idioma</span>
+        <select id="selLanguage" class="dark-select">
+          <option value="es">Español</option>
+          <option value="en">English</option>
+          <option value="ru">Русский</option>
+        </select>
+        <span class="section-label" data-i18n="settings.api_token">Token de API de Sketchfab (opcional)</span>
+        <div class="input-password-wrapper">
+          <input type="password" id="inpApiToken" class="dark-input" placeholder="" spellcheck="false" autocomplete="off" data-i18n-placeholder="settings.api_token_ph">
+          <button class="btn-toggle-eye" id="btnToggleTokenEye" type="button">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+              <circle cx="12" cy="12" r="3"></circle>
+            </svg>
+          </button>
+        </div>
+        <span class="checkbox-subtext" data-i18n="settings.api_token_help">Con token, los modelos descargables se bajan como archivo oficial (texturas originales).</span>
+        <button class="btn-secondary" id="btnTokenHelp" type="button" data-i18n="settings.api_token_link">Dónde conseguir el token (gratis)</button>
+        <span class="section-label" data-i18n="settings.output_folder">Carpeta de salida</span>
         <div class="input-with-button">
-          <input type="text" id="settingsPathInput" class="dark-input" value="D:\Models" readonly>
-          <button class="icon-btn" id="btnSettingsBrowseDir" title="Выбрать">
+          <input type="text" id="settingsPathInput" class="dark-input" value="" readonly>
+          <button class="icon-btn" id="btnSettingsBrowseDir" title="Elegir" data-i18n-title="settings.choose">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <circle cx="12" cy="12" r="1"></circle>
               <circle cx="19" cy="12" r="1"></circle>
@@ -208,15 +235,15 @@
         </label>
         <label class="custom-checkbox">
           <input type="checkbox" id="chkSettingsAutoOpen" checked>
-          <span>Автоматически открывать папку</span>
+          <span data-i18n="settings.auto_open">Abrir la carpeta automáticamente</span>
         </label>
       </div>
 
       <div class="settings-section" id="secNetwork">
         <div class="section-label">
-          <span>Прокси</span>
+          <span data-i18n="settings.proxy">Proxy</span>
           <label class="toggle-wrapper">
-            <span class="toggle-label">Включено</span>
+            <span class="toggle-label" data-i18n="settings.enabled">Activado</span>
             <div class="switch">
               <input type="checkbox" id="chkProxyEnabled">
               <span class="slider"></span>
@@ -224,7 +251,7 @@
           </label>
         </div>
         <div class="form-field-row">
-          <span class="field-name">Тип прокси</span>
+          <span class="field-name" data-i18n="settings.proxy_type">Tipo de proxy</span>
           <select id="selProxyType" class="dark-select">
             <option value="SOCKS5">SOCKS5</option>
             <option value="HTTP">HTTP</option>
@@ -241,12 +268,12 @@
         </div>
         <div class="form-field-row">
           <span class="field-name">Username</span>
-          <input type="text" id="inpProxyUser" class="dark-input" placeholder="Логин (необязательно)">
+          <input type="text" id="inpProxyUser" class="dark-input" placeholder="Usuario (opcional)" data-i18n-placeholder="settings.user_placeholder">
         </div>
         <div class="form-field-row">
           <span class="field-name">Password</span>
           <div class="input-password-wrapper">
-            <input type="password" id="inpProxyPass" class="dark-input" placeholder="Пароль (необязательно)">
+            <input type="password" id="inpProxyPass" class="dark-input" placeholder="Contraseña (opcional)" data-i18n-placeholder="settings.pass_placeholder">
             <button class="btn-toggle-eye" id="btnTogglePassEye" type="button">
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
@@ -255,22 +282,28 @@
             </button>
           </div>
         </div>
-        <button class="btn-full-card" id="btnTestProxy">Проверить соединение</button>
+        <button class="btn-full-card" id="btnTestProxy" data-i18n="settings.test_proxy">Probar conexión</button>
       </div>
 
       <div class="settings-section" id="secProcessing">
-        <span class="section-label">Формат</span>
+        <span class="section-label" data-i18n="settings.format">Formato</span>
         <select id="selFormat" class="dark-select">
           <option value="GLB">GLB</option>
           <option value="glTF">glTF</option>
         </select>
+        <span class="section-label" data-i18n="settings.converter">Conversor</span>
+        <select id="selConverter" class="dark-select">
+          <option value="auto" data-i18n="settings.conv_auto">Automático</option>
+          <option value="osgconv">osgconv (wine)</option>
+          <option value="python">Python</option>
+        </select>
         <label class="custom-checkbox">
           <input type="checkbox" id="chkFormatTextures" checked>
-          <span>Загружать текстуры</span>
+          <span data-i18n="settings.dl_textures">Descargar texturas</span>
         </label>
         <label class="custom-checkbox">
           <input type="checkbox" id="chkFormatMaterials" checked>
-          <span>Сохранять оригинальные материалы</span>
+          <span data-i18n="settings.keep_materials">Conservar materiales originales</span>
         </label>
       </div>
     </div>
@@ -280,29 +313,29 @@
     <div class="statusbar-left">
       <div class="counter-badge">
         <span class="badge-dot green"></span>
-        <span>Готово: <strong id="barDone">1</strong></span>
+        <span><span data-i18n="status.done">Listo</span>: <strong id="barDone">0</strong></span>
       </div>
       <div class="counter-badge">
         <span class="badge-dot blue"></span>
-        <span>Загружается: <strong id="barActive">1</strong></span>
+        <span><span data-i18n="status.downloading">Descargando</span>: <strong id="barActive">0</strong></span>
       </div>
       <div class="counter-badge">
         <span class="badge-dot gray"></span>
-        <span>В очереди: <strong id="barQueued">1</strong></span>
+        <span><span data-i18n="status.queued">En cola</span>: <strong id="barQueued">0</strong></span>
       </div>
     </div>
     <div class="statusbar-right">
       <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor">
         <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
       </svg>
-      <span id="bottomStatusMsg">Готов к работе</span>
+      <span id="bottomStatusMsg" data-i18n="status.ready">Listo</span>
     </div>
   </div>
 
   <div class="modal-overlay" id="batchModal">
     <div class="modal-dialog">
       <div class="modal-header">
-        <span class="modal-title">Добавить несколько моделей</span>
+        <span class="modal-title" data-i18n="modal.add_many_title">Añadir varios modelos</span>
         <button class="panel-ctrl-btn" id="btnCloseBatchModal">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <line x1="18" y1="6" x2="6" y2="18"></line>
@@ -310,14 +343,15 @@
           </svg>
         </button>
       </div>
-      <textarea id="batchTextarea" class="modal-textarea" placeholder="Вставьте ссылки на модели или 32-значные UID (по одной на строку)..."></textarea>
+      <textarea id="batchTextarea" class="modal-textarea" placeholder="Pega enlaces de modelos o UID de 32 caracteres (uno por línea)..." data-i18n-placeholder="modal.placeholder"></textarea>
       <div class="modal-actions">
-        <button class="btn-secondary" id="btnCancelBatch">Отмена</button>
-        <button class="btn-primary" id="btnConfirmBatch">Добавить в очередь</button>
+        <button class="btn-secondary" id="btnCancelBatch" data-i18n="modal.cancel">Cancelar</button>
+        <button class="btn-primary" id="btnConfirmBatch" data-i18n="modal.confirm">Añadir a la cola</button>
       </div>
     </div>
   </div>
 
+  <script src="i18n.js"></script>
   <script src="app.js"></script>
 </body>
 </html>
